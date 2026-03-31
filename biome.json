@@ -6,7 +6,7 @@
 		"useIgnoreFile": true
 	},
 	"files": {
-		"includes": ["**", "!!**/dist", "!!src/assets/locales/*.json", "!!**/*.css"]
+		"includes": ["**", "!!**/dist", "!!src/assets/locales/*.json", "!!**/*.css", "!!**/*.html"]
 	},
 	"formatter": {
 		"enabled": true,
