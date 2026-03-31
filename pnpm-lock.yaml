@@ -78,8 +78,8 @@ importers:
         specifier: ^7.1.0
         version: 7.1.0
       hls.js:
-        specifier: ^1.6.13
-        version: 1.6.13
+        specifier: ^1.5.20
+        version: 1.5.20
       i18next:
         specifier: ^23.16.8
         version: 23.16.8
@@ -2632,8 +2632,8 @@ packages:
   hls-parser@0.13.6:
     resolution: {integrity: sha512-I40sl22E2muqeSTpG8kMN2dAegAhubkXPXtnsUXFwdKwZK47d1Q+XwuX32VMZ++AZU5oeQIZqAnGNHxSG1sWaw==}
 
-  hls.js@1.6.13:
-    resolution: {integrity: sha512-hNEzjZNHf5bFrUNvdS4/1RjIanuJ6szpWNfTaX5I6WfGynWXGT7K/YQLYtemSvFExzeMdgdE4SsyVLJbd5PcZA==}
+  hls.js@1.5.20:
+    resolution: {integrity: sha512-uu0VXUK52JhihhnN/MVVo1lvqNNuhoxkonqgO3IpjvQiGpJBdIXMGkofjQb/j9zvV7a1SW8U9g1FslWx/1HOiQ==}
 
   hoist-non-react-statics@3.3.2:
     resolution: {integrity: sha512-/gGivxi8JPKWNm/W0jSmzcMPpfpPLc3dY/6GxhX2hQ9iGj3aDfklV4ET7NjKpSinLpJ5vafa9iiGIEZg10SfBw==}
@@ -7396,7 +7396,7 @@ snapshots:
 
   hls-parser@0.13.6: {}
 
-  hls.js@1.6.13: {}
+  hls.js@1.5.20: {}
 
   hoist-non-react-statics@3.3.2:
     dependencies:
