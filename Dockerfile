@@ -5,6 +5,7 @@ COPY package.json ./
 COPY pnpm-lock.yaml ./
 RUN corepack enable
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+RUN pnpm update-providers
 
 ARG PWA_ENABLED="true"
 ARG GA_ID
