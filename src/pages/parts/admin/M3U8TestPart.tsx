@@ -131,7 +131,13 @@ export function M3U8TestPart() {
         const testUrl = `${proxy.url}/?destination=${encodeURIComponent(
           "https://postman-echo.com/get",
         )}`;
-        const response = await fetch(testUrl);
+
+        const includeCredentials =
+          import.meta.env.VITE_FQDN &&
+          new URL(proxy.url).hostname.endsWith(import.meta.env.VITE_FQDN);
+        const response = await fetch(testUrl, {
+          credentials: includeCredentials ? "include" : "same-origin",
+        });
 
         if (response.ok) {
           updateProxy(proxy.id, {
