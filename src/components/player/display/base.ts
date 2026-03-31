@@ -776,7 +776,7 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
 
       // Store the original URL to restore later
       const originalUrl =
-        source?.type === "hls" ? hls?.url || source.url : videoPlayer.src;
+        source?.type === "hls" ? source.url : videoPlayer.src;
 
       let proxiedUrl: string | null = null;
 
