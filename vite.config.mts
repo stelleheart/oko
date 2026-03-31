@@ -1,11 +1,11 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import loadVersion from "vite-plugin-package-version";
 import { VitePWA } from "vite-plugin-pwa";
 import checker from "vite-plugin-checker";
 import path from "path";
 import { handlebars } from "./plugins/handlebars";
-import { PluginOption, loadEnv, splitVendorChunkPlugin } from "vite";
+import { type PluginOption, loadEnv } from "vite";
 import { visualizer } from "rollup-plugin-visualizer";
 
 import tailwind from "tailwindcss";
@@ -55,6 +55,7 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         disable: env.VITE_PWA_ENABLED !== "true",
         registerType: "autoUpdate",
+
         workbox: {
           maximumFileSizeToCacheInBytes: 4000000, // 4mb
           globIgnores: ["!assets/**/*"],
@@ -108,7 +109,6 @@ export default defineConfig(({ mode }) => {
         },
         typescript: true, // check typescript build errors in dev server
       }),
-      splitVendorChunkPlugin(),
       visualizer() as PluginOption,
     ],
 

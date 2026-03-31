@@ -1,11 +1,11 @@
-FROM node:lts as build
+FROM node:25-alpine AS build
+RUN npm install -g bun
 WORKDIR /app
 
+COPY bun.lock ./
 COPY package.json ./
-COPY pnpm-lock.yaml ./
-RUN corepack enable
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
-RUN pnpm add github:stelleheart/providers#production
+
+RUN --mount=type=cache,target=/root/.bun bun install --frozen-lockfile --linker isolated
 
 ARG PWA_ENABLED="true"
 ARG GA_ID
@@ -40,7 +40,7 @@ ENV VITE_CDN_REPLACEMENTS=${CDN_REPLACEMENTS}
 ENV VITE_ALLOW_AUTOPLAY=${ALLOW_AUTOPLAY}
 
 COPY . ./
-RUN pnpm run build
+RUN bun run build
 
 # production environment
 FROM nginx:stable-alpine
