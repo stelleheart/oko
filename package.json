@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:pwa": "cross-env VITE_PWA_ENABLED=true vite build",
-    "update-and-build": "pnpm remove @p-stream/providers && pnpm add github:p-stream/providers#production && pnpm run build",
+    "update-and-build": "pnpm remove @p-stream/providers && pnpm add github:xp-technologies-dev/providers/providers#production && pnpm run build",
     "update-providers": "pnpm update @p-stream/providers",
     "test": "vitest run",
     "preview": "vite preview",
