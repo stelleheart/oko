@@ -440,7 +440,7 @@
 
     "@nodelib/fs.walk": ["@nodelib/fs.walk@1.2.8", "", { "dependencies": { "@nodelib/fs.scandir": "2.1.5", "fastq": "1.19.1" } }, "sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg=="],
 
-    "@p-stream/providers": ["@p-stream/providers@github:xp-technologies-dev/providers#b3084e84184aeeb54d098a49eb1a0bfe824c5b6a", { "dependencies": { "abort-controller": "3.0.0", "cheerio": "1.0.0-rc.12", "cookie": "0.6.0", "crypto-js": "4.2.0", "form-data": "4.0.4", "fuse.js": "7.1.0", "hls-parser": "0.13.6", "iso-639-1": "3.1.5", "json5": "2.2.3", "nanoid": "3.3.11", "node-fetch": "3.3.2", "set-cookie-parser": "2.7.2", "unpacker": "1.0.1" } }, "", "sha512-FcnHPrVkVZVD5QwV9GTFslwTwC+xUjPcc7Ic1Az0qs2jZwmTQBOtLVIFWNTpbe8d4t3tHMf8258u/+X2w8j2rA=="],
+    "@p-stream/providers": ["@p-stream/providers@github:xp-technologies-dev/providers#0cec625", { "dependencies": { "abort-controller": "^3.0.0", "cheerio": "1.0.0-rc.12", "cookie": "^0.6.0", "crypto-js": "^4.2.0", "form-data": "^4.0.4", "fuse.js": "^7.1.0", "hls-parser": "^0.13.6", "iso-639-1": "^3.1.5", "json5": "^2.2.3", "nanoid": "^3.3.11", "node-fetch": "^3.3.2", "set-cookie-parser": "^2.7.1", "unpacker": "^1.0.1" } }, "xp-technologies-dev-providers-0cec625", "sha512-F0GQusK3TfB78MtaSTPzvhzWzCHI5olXqhTKlpqA6G79Zvt9MahTITsfnacPcaf7dwVd0xKM2kWconRbkgTRlA=="],
 
     "@pkgjs/parseargs": ["@pkgjs/parseargs@0.11.0", "", {}, "sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg=="],
 
