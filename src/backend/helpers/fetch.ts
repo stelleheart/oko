@@ -58,13 +58,16 @@ export async function singularProxiedFetch<T>(
       "X-Token": apiToken,
     };
 
+  const includeCredentials =
+    process.env.FQDN && new URL(proxyUrl).hostname.endsWith(process.env.FQDN);
+
   return baseFetch<T>(proxyUrl, {
     ...ops,
     baseURL: undefined,
     params: {
       destination: parsedUrl.toString(),
     },
-    credentials: "include",
+    credentials: includeCredentials ? "include" : "same-origin",
     query: {},
     headers,
     onResponse(context) {
