@@ -59,7 +59,7 @@ export async function singularProxiedFetch<T>(
     };
 
   const includeCredentials =
-    process.env.FQDN && new URL(proxyUrl).hostname.endsWith(process.env.FQDN);
+    import.meta.env.VITE_FQDN && new URL(proxyUrl).hostname.endsWith(import.meta.env.VITE_FQDN);
 
   return baseFetch<T>(proxyUrl, {
     ...ops,
