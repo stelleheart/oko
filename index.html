@@ -220,12 +220,24 @@
       href="/splash_screens/8.3__iPad_Mini_portrait.png"
     />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Open+Sans:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    {{#if env.VITE_CUSTOM_FONT_CSS }}
+      <link href="{{ env.VITE_CUSTOM_FONT_CSS }}" rel="stylesheet" />
+    {{else}}
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+      <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Open+Sans:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+      />
+    {{/if}}
+    <script>
+      (function() {
+        var font = '{{env.VITE_CUSTOM_FONT_FAMILY}}';
+        var fallback = "'DM Sans', 'Open Sans', sans-serif";
+        var value = font && font !== 'undefined' ? font : fallback;
+        document.documentElement.style.setProperty('--main-font-family', value);
+      })();
+    </script>
 
     <script src="/config.js"></script>
 
