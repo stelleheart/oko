@@ -205,19 +205,23 @@ export function SettingsPage() {
         scrollToHash(hash);
       } else {
         // Try to find the element anyway (might be a sub-section)
-        const element = document.querySelector(hash);
-        if (element) {
-          // Find which category this element belongs to
-          const parentSection = element.closest('[id^="settings-"]');
-          if (parentSection) {
-            const categoryId = parentSection.id;
-            if (validCategories.includes(categoryId)) {
-              setSelectedCategory(categoryId);
-              scrollToHash(hash, { delay: 100 });
+        try {
+          const element = document.querySelector(hash);
+          if (element) {
+            // Find which category this element belongs to
+            const parentSection = element.closest('[id^="settings-"]');
+            if (parentSection) {
+              const categoryId = parentSection.id;
+              if (validCategories.includes(categoryId)) {
+                setSelectedCategory(categoryId);
+                scrollToHash(hash, { delay: 100 });
+              }
+            } else {
+              scrollToHash(hash);
             }
-          } else {
-            scrollToHash(hash);
           }
+        } catch (error) {
+          console.error("failed to find element for hash:", hash, error);
         }
       }
     }
