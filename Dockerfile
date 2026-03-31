@@ -1,12 +1,9 @@
-FROM node:20-alpine as build
+FROM oven/bun:latest as build
 WORKDIR /app
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
 
 COPY package.json ./
-COPY pnpm-lock.yaml ./
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+COPY bun.lock ./
+RUN --mount=type=cache,id=bun,target=/root/.bun/install/cache bun install --frozen-lockfile
 
 ARG PWA_ENABLED="true"
 ARG GA_ID
@@ -41,7 +38,7 @@ ENV VITE_CDN_REPLACEMENTS=${CDN_REPLACEMENTS}
 ENV VITE_ALLOW_AUTOPLAY=${ALLOW_AUTOPLAY}
 
 COPY . ./
-RUN pnpm run build
+RUN bun run build
 
 # production environment
 FROM nginx:stable-alpine
