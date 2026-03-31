@@ -8,7 +8,6 @@ type R<T> = ReturnType<typeof ofetch<T, any>>;
 
 const baseFetch = ofetch.create({
   retry: 0,
-  credentials: "include",
 });
 
 export function makeUrl(url: string, data: Record<string, string>) {
@@ -65,6 +64,7 @@ export async function singularProxiedFetch<T>(
     params: {
       destination: parsedUrl.toString(),
     },
+    credentials: "include",
     query: {},
     headers,
     onResponse(context) {
