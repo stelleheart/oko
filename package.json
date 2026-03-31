@@ -12,10 +12,10 @@
     "update-providers": "pnpm update @p-stream/providers",
     "test": "vitest run",
     "preview": "vite preview",
-    "lint": "eslint --ext .tsx,.ts src",
-    "lint:fix": "eslint --fix --ext .tsx,.ts src",
-    "lint:report": "eslint --ext .tsx,.ts --output-file eslint_report.json --format json src",
-    "preinstall": "npx -y only-allow pnpm"
+    "lint": "biome check ./src",
+    "lint:fix": "biome check --write ./src",
+    "format": "biome format --write ./src",
+    "lint:report": "biome check --format json --output-file eslint_report.json ./src"
   },
   "browserslist": {
     "production": [
@@ -98,20 +98,10 @@
     "@types/react-stickynode": "^4.0.3",
     "@types/react-transition-group": "^4.4.12",
     "@types/semver": "^7.7.1",
-    "@typescript-eslint/eslint-plugin": "^6.21.0",
-    "@typescript-eslint/parser": "^6.21.0",
     "@vitejs/plugin-react": "^4.7.0",
+    "@biomejs/biome": "^2.4.0",
     "autoprefixer": "^10.4.21",
     "cross-env": "^7.0.3",
-    "eslint": "^8.57.1",
-    "eslint-config-airbnb": "19.0.4",
-    "eslint-config-prettier": "^9.1.2",
-    "eslint-import-resolver-typescript": "^3.10.1",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-jsx-a11y": "^6.10.2",
-    "eslint-plugin-prettier": "^5.5.4",
-    "eslint-plugin-react": "7.33.2",
-    "eslint-plugin-react-hooks": "4.6.0",
     "glob": "^10.4.5",
     "handlebars": "^4.7.8",
     "jsdom": "^23.2.0",
@@ -134,13 +124,11 @@
     "vitest": "^1.6.1",
     "workbox-window": "^7.3.0"
   },
-  "pnpm": {
-    "overrides": {
-      "get-func-name@<2.0.1": ">=2.0.1",
-      "postcss@<8.4.31": ">=8.4.31",
-      "@babel/traverse@<7.23.2": ">=7.23.2",
-      "crypto-js@<4.2.0": ">=4.2.0",
-      "rollup": "4.43.0"
-    }
+  "overrides": {
+    "get-func-name@<2.0.1": ">=2.0.1",
+    "postcss@<8.4.31": ">=8.4.31",
+    "@babel/traverse@<7.23.2": ">=7.23.2",
+    "crypto-js@<4.2.0": ">=4.2.0",
+    "rollup": "4.43.0"
   }
 }
