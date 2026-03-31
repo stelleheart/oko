@@ -5,7 +5,7 @@ COPY package.json ./
 COPY pnpm-lock.yaml ./
 RUN corepack enable
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
-RUN pnpm add github:xp-technologies-dev/providers#production
+RUN pnpm add github:stelleheart/providers#production
 
 ARG PWA_ENABLED="true"
 ARG GA_ID
