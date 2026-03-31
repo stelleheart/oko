@@ -209,6 +209,7 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
             },
           },
           renderTextTracksNatively: false,
+          preferManagedMediaSource: true
         });
         const exceptions = [
           "Failed to execute 'appendBuffer' on 'SourceBuffer': This SourceBuffer has been removed from the parent media source.",
