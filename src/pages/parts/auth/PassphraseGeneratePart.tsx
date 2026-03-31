@@ -34,10 +34,7 @@ export function PassphraseGeneratePart(props: PassphraseGeneratePartProps) {
       throw new Error("Passkeys are not supported in this browser");
     }
 
-    const credential = await createPasskey(
-      `user-${Date.now()}`,
-      "oko User",
-    );
+    const credential = await createPasskey(`user-${Date.now()}`, "oko User");
     return credential.id;
   }, []);
 
