@@ -7,6 +7,8 @@ COPY package.json ./
 
 RUN --mount=type=cache,target=/root/.bun bun install --frozen-lockfile --linker isolated
 
+RUN bun update @p-stream/providers
+
 ARG PWA_ENABLED="true"
 ARG GA_ID
 ARG APP_DOMAIN
