@@ -97,22 +97,36 @@ function makeFinalHeaders(
   );
 }
 
-export function makeExtensionFetcher() {
+export function makeExtensionFetcher(fallbackFetcher?: Fetcher) {
   const fetcher: Fetcher = async (url, ops) => {
-    const result = await sendExtensionRequest<any>({
-      url,
-      ...ops,
-      body: convertBodyToObject(ops.body),
-      bodyType: getBodyTypeFromBody(ops.body),
-    });
-    if (!result?.success) throw new Error(`extension error: ${result?.error}`);
-    const res = result.response;
-    return {
-      body: res.body,
-      finalUrl: res.finalUrl,
-      statusCode: res.statusCode,
-      headers: makeFinalHeaders(ops.readHeaders, res.headers),
-    };
+    try {
+      const result = await sendExtensionRequest<any>({
+        url,
+        ...ops,
+        body: convertBodyToObject(ops.body),
+        bodyType: getBodyTypeFromBody(ops.body),
+      });
+      if (!result?.success) {
+        // If extension returned an error (e.g., not whitelisted), and a fallback is provided, use it
+        if (fallbackFetcher) {
+          return fallbackFetcher(url, ops);
+        }
+        throw new Error(`extension error: ${result?.error}`);
+      }
+      const res = result.response;
+      return {
+        body: res.body,
+        finalUrl: res.finalUrl,
+        statusCode: res.statusCode,
+        headers: makeFinalHeaders(ops.readHeaders, res.headers),
+      };
+    } catch (error) {
+      // If extension request throws (e.g., communication failure), fallback if available
+      if (fallbackFetcher) {
+        return fallbackFetcher(url, ops);
+      }
+      throw error;
+    }
   };
   return fetcher;
 }

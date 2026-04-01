@@ -177,9 +177,18 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
 
   function setupSource(vid: HTMLVideoElement, src: LoadableSource) {
     hls = null;
+
+    // Compute final URL with CDN processing
+    let finalUrl = processCdnLink(src.url);
+
+    // Apply CORS proxy fallback for HLS streams when extension is not active
+    if (src.type === 'hls' && !isExtensionActiveCached() && !isUrlAlreadyProxied(finalUrl)) {
+      finalUrl = createM3U8ProxyUrl(finalUrl, { ...src.preferredHeaders, ...src.headers });
+    }
+
     if (src.type === "hls") {
       if (canPlayHlsNatively(vid)) {
-        vid.src = processCdnLink(src.url);
+        vid.src = finalUrl;
         vid.currentTime = startAt;
         return;
       }
@@ -336,12 +345,12 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
       }
 
       hls.attachMedia(vid);
-      hls.loadSource(processCdnLink(src.url));
+      hls.loadSource(finalUrl);
       vid.currentTime = startAt;
       return;
     }
 
-    vid.src = processCdnLink(src.url);
+    vid.src = finalUrl;
     vid.currentTime = startAt;
   }
 

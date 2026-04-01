@@ -32,7 +32,7 @@ export function getProviders() {
   if (isExtensionActiveCached()) {
     return makeProviders({
       fetcher: makeStandardFetcher(fetch),
-      proxiedFetcher: makeExtensionFetcher(),
+      proxiedFetcher: makeExtensionFetcher(makeLoadBalancedSimpleProxyFetcher()),
       target: targets.BROWSER_EXTENSION,
       consistentIpForRequests: true,
     });

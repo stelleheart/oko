@@ -4,6 +4,7 @@ import { proxiedFetch } from "@/backend/helpers/fetch";
 import { convertSubtitlesToSrt } from "@/components/player/utils/captions";
 import { CaptionListItem } from "@/stores/player/slices/source";
 import { SimpleCache } from "@/utils/cache";
+import { isUrlAlreadyProxied } from "@/components/player/utils/proxy";
 
 import {
   isExtensionActiveCached,
@@ -24,21 +25,30 @@ export async function downloadCaption(
   const cached = downloadCache.get(caption.url);
   if (cached) return cached;
 
-  let data: string | undefined;
+  let data: string;
   if (caption.needsProxy) {
     if (isExtensionActiveCached()) {
-      const extensionResponse = await sendExtensionRequest({
-        url: caption.url,
-        method: "GET",
-      });
-      if (
-        !extensionResponse?.success ||
-        typeof extensionResponse.response.body !== "string"
-      ) {
-        throw new Error("failed to get caption data from extension");
+      try {
+        const extensionResponse = await sendExtensionRequest({
+          url: caption.url,
+          method: "GET",
+        });
+        if (
+          !extensionResponse?.success ||
+          typeof extensionResponse.response.body !== "string"
+        ) {
+          throw new Error("extension failed to get caption");
+        }
+        data = extensionResponse.response.body;
+      } catch {
+        // Fallback to proxy if extension fails (e.g., not whitelisted)
+        data = await proxiedFetch<string>(caption.url, {
+          responseType: "text",
+          headers: {
+            "Accept-Charset": "utf-8",
+          },
+        });
       }
-
-      data = extensionResponse.response.body;
     } else {
       data = await proxiedFetch<string>(caption.url, {
         responseType: "text",
@@ -68,13 +78,36 @@ export async function downloadCaption(
 }
 
 /**
- * Downloads the WebVTT content. No different than a simple
- * get request with a cache.
+ * Downloads the WebVTT content. Uses extension or CORS proxy fallback
+ * when the extension is not active.
  */
 export async function downloadWebVTT(url: string): Promise<string> {
   const cached = downloadCache.get(url);
   if (cached) return cached;
 
-  const data = await fetch(url).then((v) => v.text());
+  let data: string;
+  if (isExtensionActiveCached()) {
+    const extensionResponse = await sendExtensionRequest({
+      url,
+      method: "GET",
+    });
+    if (!extensionResponse?.success || typeof extensionResponse.response.body !== "string") {
+      throw new Error("failed to get webvtt data from extension");
+    }
+    data = extensionResponse.response.body;
+  } else {
+    // If the URL is already proxied, fetch directly; otherwise use the CORS proxy
+    if (isUrlAlreadyProxied(url)) {
+      data = await fetch(url).then((v) => v.text());
+    } else {
+      data = await proxiedFetch<string>(url, {
+        responseType: "text",
+        headers: {
+          "Accept-Charset": "utf-8",
+        },
+      });
+    }
+  }
+
   return data;
 }
