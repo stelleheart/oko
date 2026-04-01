@@ -1,5 +1,5 @@
 import { getLoadbalancedM3U8ProxyUrl } from "@/backend/providers/fetchers";
-import { getM3U8ProxyUrls } from "@/utils/proxyUrls";
+import { getM3U8ProxyUrls, ensureHttps } from "@/utils/proxyUrls";
 
 /**
  * Creates a proxied M3U8 URL for HLS streams using a random proxy from config
@@ -18,10 +18,11 @@ export function createM3U8ProxyUrl(
     console.warn("No M3U8 proxy URLs available in configuration");
     return url; // Fallback to original URL
   }
+  const proxyBase = ensureHttps(proxyBaseUrl);
 
   const encodedUrl = encodeURIComponent(url);
   const encodedHeaders = encodeURIComponent(JSON.stringify(headers));
-  return `${proxyBaseUrl}/m3u8-proxy?url=${encodedUrl}${headers ? `&headers=${encodedHeaders}` : ""}`;
+  return `${proxyBase}/m3u8-proxy?url=${encodedUrl}${headers ? `&headers=${encodedHeaders}` : ""}`;
 }
 
 /**

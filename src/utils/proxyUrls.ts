@@ -34,6 +34,16 @@ function parseParams(input: string): Record<string, string> {
   return Object.fromEntries(entriesParams);
 }
 
+export function ensureHttps(u: string): string {
+  try {
+    const parsed = new URL(u);
+    if (parsed.protocol === "http:") parsed.protocol = "https:";
+    return parsed.toString().replace(/\/$/, "");
+  } catch {
+    return u.replace(/^http:/, "https:");
+  }
+}
+
 export function getParsedUrls() {
   const urls = useAuthStore.getState().proxySet ?? originalUrls;
   const output: ParsedUrl[] = [];
@@ -61,7 +71,7 @@ export function getParsedUrls() {
     });
   });
 
-  return output;
+  return output.map((p) => ({ url: ensureHttps(p.url), type: p.type }));
 }
 
 export function getProxyUrls() {
@@ -71,5 +81,5 @@ export function getProxyUrls() {
 }
 
 export function getM3U8ProxyUrls(): string[] {
-  return conf().M3U8_PROXY_URLS;
+  return conf().M3U8_PROXY_URLS.map((u) => ensureHttps(u));
 }
