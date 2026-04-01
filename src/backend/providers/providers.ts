@@ -43,7 +43,7 @@ export function getProviders() {
   return makeProviders({
     fetcher: makeStandardFetcher(fetch),
     proxiedFetcher: makeLoadBalancedSimpleProxyFetcher(),
-    target: targets.BROWSER,
+    target: targets.BROWSER_EXTENSION
   });
 }
 
