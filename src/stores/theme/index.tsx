@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Helmet } from "react-helmet-async";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
@@ -55,12 +55,12 @@ const currentDate = new Date();
 const is420 = currentDate.getMonth() + 1 === 4 && currentDate.getDate() === 20;
 const isHalloween =
   currentDate.getMonth() + 1 === 10 && currentDate.getDate() === 31;
-// Make default theme green if its 4/20 (bc the marijauna plant is green :3)
-// Make default theme autumn if its Halloween (spooky autumn vibes 🎃)
+const defaultTheme = is420 ? "green" : isHalloween ? "autumn" : "forest";
+
 export const useThemeStore = create(
   persist(
     immer<ThemeStore>((set) => ({
-      theme: is420 ? "green" : isHalloween ? "autumn" : null,
+      theme: defaultTheme,
       customTheme: {
         primary: "classic",
         secondary: "classic",
@@ -106,6 +106,14 @@ export const useThemeStore = create(
     })),
     {
       name: "__MW::theme",
+      version: 2,
+      migrate: (persistedState) => {
+        const state = (persistedState ?? {}) as Partial<ThemeStore>;
+        return {
+          ...state,
+          theme: state.theme ?? defaultTheme,
+        };
+      },
     },
   ),
 );

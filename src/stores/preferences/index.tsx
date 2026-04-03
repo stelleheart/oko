@@ -4,7 +4,7 @@ import { immer } from "zustand/middleware/immer";
 
 import {
   DEFAULT_KEYBOARD_SHORTCUTS,
-  KeyboardShortcuts,
+  type KeyboardShortcuts,
 } from "@/utils/keyboardShortcuts";
 
 export interface PreferencesStore {
@@ -89,16 +89,16 @@ export const usePreferencesStore = create(
       enableSkipCredits: true,
       enableAutoSkipSegments: false,
       enableDiscover: true,
-      enableFeatured: false,
+      enableFeatured: true,
       enableDetailsModal: false,
       enableImageLogos: true,
-      enableCarouselView: false,
+      enableCarouselView: true,
       enableMinimalCards: false,
       forceCompactEpisodeView: false,
       sourceOrder: [],
       enableSourceOrder: false,
       lastSuccessfulSource: null,
-      enableLastSuccessfulSource: false,
+      enableLastSuccessfulSource: true,
       embedOrder: [],
       enableEmbedOrder: false,
       proxyTmdb: false,

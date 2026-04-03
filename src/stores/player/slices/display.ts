@@ -1,6 +1,6 @@
-import { DisplayInterface } from "@/components/player/display/displayInterface";
+import type { DisplayInterface } from "@/components/player/display/displayInterface";
 import { playerStatus } from "@/stores/player/slices/source";
-import { MakeSlice } from "@/stores/player/slices/types";
+import type { MakeSlice } from "@/stores/player/slices/types";
 
 export interface DisplaySlice {
   display: DisplayInterface | null;

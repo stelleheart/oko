@@ -241,7 +241,10 @@ function ExtensionStatus() {
   return null;
 }
 const container = document.getElementById("root");
-const root = createRoot(container!);
+if (!container) {
+  throw new Error("Root container #root was not found");
+}
+const root = createRoot(container);
 
 root.render(
   <StrictMode>

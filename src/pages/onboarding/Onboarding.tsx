@@ -126,16 +126,23 @@ export function OnboardingPage() {
             <Ol
               items={[
                 <Item
+                    key="explainer-extension"
                   title={t("onboarding.start.moreInfo.explainer.extension")}
                 >
                   {t(
                     "onboarding.start.moreInfo.explainer.extensionDescription",
                   )}
                 </Item>,
-                <Item title={t("onboarding.start.moreInfo.explainer.proxy")}>
+                  <Item
+                    key="explainer-proxy"
+                    title={t("onboarding.start.moreInfo.explainer.proxy")}
+                  >
                   {t("onboarding.start.moreInfo.explainer.proxyDescription")}
                 </Item>,
-                <Item title={t("onboarding.start.moreInfo.explainer.default")}>
+                  <Item
+                    key="explainer-default"
+                    title={t("onboarding.start.moreInfo.explainer.default")}
+                  >
                   {t("onboarding.start.moreInfo.explainer.defaultDescription")}
                 </Item>,
               ].filter(Boolean)}
@@ -163,7 +170,9 @@ export function OnboardingPage() {
               target="_blank"
               rel="noopener noreferrer"
               className="text-type-link"
-            />
+              >
+                Discord
+              </a>
           </Trans>
         </div>
       </FancyModal>
@@ -174,13 +183,14 @@ export function OnboardingPage() {
         </Heading2>
         <Paragraph className="max-w-[360px]">
           {t("onboarding.start.explainer")}
-          <div
+          <button
+            type="button"
             className="pt-4 flex cursor-pointer items-center text-type-link"
             onClick={() => infoModal.show()}
           >
             <Trans i18nKey="onboarding.start.moreInfo.button" />
             <Icon className="pl-2" icon={Icons.CIRCLE_QUESTION} />
-          </div>
+          </button>
         </Paragraph>
 
         {/* Desktop Cards */}

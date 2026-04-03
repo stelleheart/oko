@@ -118,9 +118,13 @@ function coerceUndefined(value: string | null | undefined): string | undefined {
   return value;
 }
 
+type WindowConfig = Window & {
+  __CONFIG__?: Partial<Record<`VITE_${keyof Config}`, string>>;
+};
+
 // loads from different locations, in order: environment (VITE_{KEY}), window (public/config.js)
 function getKeyValue(key: keyof Config): string | undefined {
-  const windowValue = (window as any)?.__CONFIG__?.[`VITE_${key}`];
+  const windowValue = (window as WindowConfig).__CONFIG__?.[`VITE_${key}`];
 
   return coerceUndefined(env[key]) ?? coerceUndefined(windowValue) ?? undefined;
 }
