@@ -20,37 +20,114 @@ import { SupportInfoModal } from "@/components/overlays/SupportInfoModal";
 import { TraktAuthHandler } from "@/components/TraktAuthHandler";
 import { useGlobalKeyboardEvents } from "@/hooks/useGlobalKeyboardEvents";
 import { useOnlineListener } from "@/hooks/usePing";
-import { AboutPage } from "@/pages/About";
-import { AdminPage } from "@/pages/admin/AdminPage";
-import { AllBookmarks } from "@/pages/bookmarks/AllBookmarks";
-import VideoTesterView from "@/pages/developer/VideoTesterView";
-import { DiscoverMore } from "@/pages/discover/AllMovieLists";
-import { Discover } from "@/pages/discover/Discover";
-import { MoreContent } from "@/pages/discover/MoreContent";
 import MaintenancePage from "@/pages/errors/MaintenancePage";
 import { NotFoundPage } from "@/pages/errors/NotFoundPage";
 import { HomePage } from "@/pages/HomePage";
-import { JipPage } from "@/pages/Jip";
-import { LegalPage, shouldHaveLegalPage } from "@/pages/Legal";
 import { LoginPage } from "@/pages/Login";
-import { MigrationPage } from "@/pages/migration/Migration";
-import { MigrationDirectPage } from "@/pages/migration/MigrationDirect";
-import { MigrationDownloadPage } from "@/pages/migration/MigrationDownload";
-import { MigrationUploadPage } from "@/pages/migration/MigrationUpload";
-import { OnboardingPage } from "@/pages/onboarding/Onboarding";
-import { OnboardingExtensionPage } from "@/pages/onboarding/OnboardingExtension";
-import { OnboardingProxyPage } from "@/pages/onboarding/OnboardingProxy";
-import { PasPage } from "@/pages/Pas";
 import { RegisterPage } from "@/pages/Register";
-import { SupportPage } from "@/pages/Support";
-import { WatchHistory } from "@/pages/watchHistory/WatchHistory";
+import { shouldHaveLegalPage } from "@/pages/Legal";
 import { Layout } from "@/setup/Layout";
 import { useHistoryListener } from "@/stores/history";
 import { useClearModalsOnNavigation } from "@/stores/interface/overlayStack";
 import { LanguageProvider } from "@/stores/language";
 
+// Critical path (static imports)
+// - HomePage: landing page
+// - Login/Register: auth
+// - Errors: needed on every route
+
+// Lazy loaded routes - secondary pages and features
+const AboutPage = lazy(() =>
+  import("@/pages/About").then((m) => ({ default: m.AboutPage }))
+);
+const AdminPage = lazy(() =>
+  import("@/pages/admin/AdminPage").then((m) => ({ default: m.AdminPage }))
+);
+const AllBookmarks = lazy(() =>
+  import("@/pages/bookmarks/AllBookmarks").then((m) => ({
+    default: m.AllBookmarks,
+  }))
+);
+const Discover = lazy(() =>
+  import("@/pages/discover/Discover").then((m) => ({ default: m.Discover }))
+);
+const DiscoverMore = lazy(() =>
+  import("@/pages/discover/AllMovieLists").then((m) => ({
+    default: m.DiscoverMore,
+  }))
+);
+const MoreContent = lazy(() =>
+  import("@/pages/discover/MoreContent").then((m) => ({
+    default: m.MoreContent,
+  }))
+);
+const JipPage = lazy(() =>
+  import("@/pages/Jip").then((m) => ({ default: m.JipPage }))
+);
+const LegalPage = lazy(() =>
+  import("@/pages/Legal").then((m) => ({ default: m.LegalPage }))
+);
+const MigrationPage = lazy(() =>
+  import("@/pages/migration/Migration").then((m) => ({
+    default: m.MigrationPage,
+  }))
+);
+const MigrationDirectPage = lazy(() =>
+  import("@/pages/migration/MigrationDirect").then((m) => ({
+    default: m.MigrationDirectPage,
+  }))
+);
+const MigrationDownloadPage = lazy(() =>
+  import("@/pages/migration/MigrationDownload").then((m) => ({
+    default: m.MigrationDownloadPage,
+  }))
+);
+const MigrationUploadPage = lazy(() =>
+  import("@/pages/migration/MigrationUpload").then((m) => ({
+    default: m.MigrationUploadPage,
+  }))
+);
+const OnboardingPage = lazy(() =>
+  import("@/pages/onboarding/Onboarding").then((m) => ({
+    default: m.OnboardingPage,
+  }))
+);
+const OnboardingExtensionPage = lazy(() =>
+  import("@/pages/onboarding/OnboardingExtension").then((m) => ({
+    default: m.OnboardingExtensionPage,
+  }))
+);
+const OnboardingProxyPage = lazy(() =>
+  import("@/pages/onboarding/OnboardingProxy").then((m) => ({
+    default: m.OnboardingProxyPage,
+  }))
+);
+const PasPage = lazy(() =>
+  import("@/pages/Pas").then((m) => ({ default: m.PasPage }))
+);
+const SupportPage = lazy(() =>
+  import("@/pages/Support").then((m) => ({ default: m.SupportPage }))
+);
+const WatchHistory = lazy(() =>
+  import("@/pages/watchHistory/WatchHistory").then((m) => ({
+    default: m.WatchHistory,
+  }))
+);
+const VideoTesterView = lazy(() =>
+  import("@/pages/developer/VideoTesterView").then((m) => ({
+    default: m.default,
+  }))
+);
+
+// Developer pages
 const DeveloperPage = lazy(() => import("@/pages/DeveloperPage"));
-const TestView = lazy(() => import("@/pages/developer/TestView"));
+const TestView = lazy(() =>
+  import("@/pages/developer/TestView").then((m) => ({
+    default: m.default,
+  }))
+);
+
+// Preloaded routes (loaded on app startup but after critical path)
 const PlayerView = lazyWithPreload(() => import("@/pages/PlayerView"));
 const SettingsPage = lazyWithPreload(() => import("@/pages/Settings"));
 
@@ -170,46 +247,167 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/onboarding" element={<OnboardingPage />} />
+          <Route
+            path="/about"
+            element={
+              <Suspense fallback={null}>
+                <AboutPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/onboarding"
+            element={
+              <Suspense fallback={null}>
+                <OnboardingPage />
+              </Suspense>
+            }
+          />
           <Route
             path="/onboarding/extension"
-            element={<OnboardingExtensionPage />}
+            element={
+              <Suspense fallback={null}>
+                <OnboardingExtensionPage />
+              </Suspense>
+            }
           />
-          <Route path="/onboarding/proxy" element={<OnboardingProxyPage />} />
+          <Route
+            path="/onboarding/proxy"
+            element={
+              <Suspense fallback={null}>
+                <OnboardingProxyPage />
+              </Suspense>
+            }
+          />
 
           {/* Migration pages - awaiting import and export fixes */}
-          <Route path="/migration" element={<MigrationPage />} />
-          <Route path="/migration/direct" element={<MigrationDirectPage />} />
+          <Route
+            path="/migration"
+            element={
+              <Suspense fallback={null}>
+                <MigrationPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/migration/direct"
+            element={
+              <Suspense fallback={null}>
+                <MigrationDirectPage />
+              </Suspense>
+            }
+          />
           <Route
             path="/migration/download"
-            element={<MigrationDownloadPage />}
+            element={
+              <Suspense fallback={null}>
+                <MigrationDownloadPage />
+              </Suspense>
+            }
           />
-          <Route path="/migration/upload" element={<MigrationUploadPage />} />
+          <Route
+            path="/migration/upload"
+            element={
+              <Suspense fallback={null}>
+                <MigrationUploadPage />
+              </Suspense>
+            }
+          />
 
           {shouldHaveLegalPage() ? (
-            <Route path="/legal" element={<LegalPage />} />
+            <Route
+              path="/legal"
+              element={
+                <Suspense fallback={null}>
+                  <LegalPage />
+                </Suspense>
+              }
+            />
           ) : null}
           {/* Support page */}
-          <Route path="/support" element={<SupportPage />} />
-          <Route path="/jip" element={<JipPage />} />
-          <Route path="/pas" element={<PasPage />} />
+          <Route
+            path="/support"
+            element={
+              <Suspense fallback={null}>
+                <SupportPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/jip"
+            element={
+              <Suspense fallback={null}>
+                <JipPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/pas"
+            element={
+              <Suspense fallback={null}>
+                <PasPage />
+              </Suspense>
+            }
+          />
           {/* Discover pages */}
-          <Route path="/discover" element={<Discover />} />
+          <Route
+            path="/discover"
+            element={
+              <Suspense fallback={null}>
+                <Discover />
+              </Suspense>
+            }
+          />
           <Route
             path="/discover/more/:contentType/:mediaType"
-            element={<MoreContent />}
+            element={
+              <Suspense fallback={null}>
+                <MoreContent />
+              </Suspense>
+            }
           />
           <Route
             path="/discover/more/:contentType/:id/:mediaType"
-            element={<MoreContent />}
+            element={
+              <Suspense fallback={null}>
+                <MoreContent />
+              </Suspense>
+            }
           />
-          <Route path="/discover/more/:category" element={<MoreContent />} />
-          <Route path="/discover/all" element={<DiscoverMore />} />
+          <Route
+            path="/discover/more/:category"
+            element={
+              <Suspense fallback={null}>
+                <MoreContent />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/discover/all"
+            element={
+              <Suspense fallback={null}>
+                <DiscoverMore />
+              </Suspense>
+            }
+          />
           {/* Bookmarks page */}
-          <Route path="/bookmarks" element={<AllBookmarks />} />
+          <Route
+            path="/bookmarks"
+            element={
+              <Suspense fallback={null}>
+                <AllBookmarks />
+              </Suspense>
+            }
+          />
           {/* Watch History page */}
-          <Route path="/watch-history" element={<WatchHistory />} />
+          <Route
+            path="/watch-history"
+            element={
+              <Suspense fallback={null}>
+                <WatchHistory />
+              </Suspense>
+            }
+          />
           {/* Settings page */}
           <Route
             path="/settings"
@@ -220,13 +418,41 @@ function App() {
             }
           />
           {/* admin routes */}
-          <Route path="/admin" element={<AdminPage />} />
+          <Route
+            path="/admin"
+            element={
+              <Suspense fallback={null}>
+                <AdminPage />
+              </Suspense>
+            }
+          />
           {/* other */}
-          <Route path="/dev" element={<DeveloperPage />} />
-          <Route path="/dev/video" element={<VideoTesterView />} />
+          <Route
+            path="/dev"
+            element={
+              <Suspense fallback={null}>
+                <DeveloperPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/dev/video"
+            element={
+              <Suspense fallback={null}>
+                <VideoTesterView />
+              </Suspense>
+            }
+          />
           {/* developer routes that can abuse workers are disabled in production */}
           {process.env.NODE_ENV === "development" ? (
-            <Route path="/dev/test" element={<TestView />} />
+            <Route
+              path="/dev/test"
+              element={
+                <Suspense fallback={null}>
+                  <TestView />
+                </Suspense>
+              }
+            />
           ) : null}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
