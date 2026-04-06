@@ -203,7 +203,6 @@ export interface PasskeyAssertion {
 }
 
 export async function createPasskey(
-  userId: string,
   userName: string,
 ): Promise<PasskeyCredential> {
   if (!isPasskeySupported()) {
@@ -235,6 +234,7 @@ export async function createPasskey(
       ],
       authenticatorSelection: {
         authenticatorAttachment: "platform",
+        residentKey: "required",
         userVerification: "preferred",
       },
       timeout: 60000,
