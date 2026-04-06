@@ -438,7 +438,7 @@
 
     "@oxc-project/types": ["@oxc-project/types@0.122.0", "", {}, "sha512-oLAl5kBpV4w69UtFZ9xqcmTi+GENWOcPF7FCrczTiBbmC0ibXxCwyvZGbO39rCVEuLGAZM84DH0pUIyyv/YJzA=="],
 
-    "@p-stream/providers": ["@p-stream/providers@github:stelleheart/providers#c97d8ed", { "dependencies": { "abort-controller": "^3.0.0", "cheerio": "1.0.0-rc.12", "cookie": "^0.6.0", "crypto-js": "^4.2.0", "form-data": "^4.0.4", "fuse.js": "^7.1.0", "hls-parser": "^0.13.6", "iso-639-1": "^3.1.5", "json5": "^2.2.3", "nanoid": "^3.3.11", "node-fetch": "^3.3.2", "rolldown-plugin-dts": "^0.23.2", "rollup-plugin-obfuscator": "^1.1.0", "set-cookie-parser": "^2.7.1", "tsdown": "^0.21.7", "typescript": "^5.9.3", "unpacker": "^1.0.1" } }, "stelleheart-providers-c97d8ed", "sha512-fovplJ8Jkw1fl53U4P69qkTJBdtBjM3BWnF4xfev3SZdIo6R0gujsDpVrF9SwQXQi4RpwfZpvYrCTIYdzvkJ/w=="],
+    "@p-stream/providers": ["@p-stream/providers@github:stelleheart/providers#7fd88cd", { "dependencies": { "@stablelib/xchacha20poly1305": "^2.0.1", "abort-controller": "^3.0.0", "cheerio": "1.0.0-rc.12", "cookie": "^0.6.0", "crypto-js": "^4.2.0", "form-data": "^4.0.4", "fuse.js": "^7.1.0", "hls-parser": "^0.13.6", "iso-639-1": "^3.1.5", "json5": "^2.2.3", "nanoid": "^3.3.11", "node-fetch": "^3.3.2", "rolldown-plugin-dts": "^0.23.2", "rollup-plugin-obfuscator": "^1.1.0", "set-cookie-parser": "^2.7.1", "tsdown": "^0.21.7", "twofish-ts": "^1.0.2", "typescript": "^5.9.3", "unpacker": "^1.0.1" } }, "stelleheart-providers-7fd88cd", "sha512-C5nlNxoy6kUTeVFXgBWuAO3doJOTaJTrs3AWEajAxebvEVLqEo9o9sN5xPQtu54WzMuAEid4edmTbH6Urlu42g=="],
 
     "@pkgjs/parseargs": ["@pkgjs/parseargs@0.11.0", "", {}, "sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg=="],
 
@@ -561,6 +561,26 @@
     "@sinclair/typebox": ["@sinclair/typebox@0.27.10", "", {}, "sha512-MTBk/3jGLNB2tVxv6uLlFh1iu64iYOQ2PbdOSK3NW8JZsmlaOh2q6sdtKowBhfw8QFLmYNzTW4/oK4uATIi6ZA=="],
 
     "@sozialhelden/ietf-language-tags": ["@sozialhelden/ietf-language-tags@5.4.2", "", { "dependencies": { "lodash.compact": "3.0.1", "typescript": "4.9.5" } }, "sha512-aCN7bVOfX9sBN0EHyWJT14H8bx+VYBo8tdcynai35wgoxKMfVtgEECkQ1gs8nEL6GHGes8lPIfo6AjIch44N3w=="],
+
+    "@stablelib/aead": ["@stablelib/aead@2.0.0", "", {}, "sha512-U/RMANRxbT/ahIpYsPSiFwDFNjADHdnCFfmo09MO1ai2XmerPAOPtMl0qmX7XVvygnACC6ijKDyHBoT2rGyElg=="],
+
+    "@stablelib/binary": ["@stablelib/binary@2.0.1", "", { "dependencies": { "@stablelib/int": "^2.0.1" } }, "sha512-U9iAO8lXgEDONsA0zPPSgcf3HUBNAqHiJmSHgZz62OvC3Hi2Bhc5kTnQ3S1/L+sthDTHtCMhcEiklmIly6uQ3w=="],
+
+    "@stablelib/chacha": ["@stablelib/chacha@2.0.1", "", { "dependencies": { "@stablelib/binary": "^2.0.1", "@stablelib/wipe": "^2.0.1" } }, "sha512-lS1FqtNqofxe2vLkRsLli2m3x/XanUyAYRphLhdHumKeIsLbjbCXdCq3Pf/eWiO7G3QlSG5ViqnoVjktzfLWMg=="],
+
+    "@stablelib/chacha20poly1305": ["@stablelib/chacha20poly1305@2.0.1", "", { "dependencies": { "@stablelib/aead": "^2.0.0", "@stablelib/binary": "^2.0.1", "@stablelib/chacha": "^2.0.1", "@stablelib/constant-time": "^2.0.1", "@stablelib/poly1305": "^2.0.1", "@stablelib/wipe": "^2.0.1" } }, "sha512-kOoBsXbDPVRlelzXl+5WViycgM19lD7lF3Bc3KWI+DzId0Stc2HlxAfSc+Xpn3RgqSCl1ZNTXr33LegqBhBBaw=="],
+
+    "@stablelib/constant-time": ["@stablelib/constant-time@2.0.1", "", {}, "sha512-0NWPogffRm+UWBH0+iM5otZmNrVe5OHFIvyoNIVankMAYOQzMwcdVALOVPrB5Ho0dST+Oc3H8/hPh65Z8R/uew=="],
+
+    "@stablelib/int": ["@stablelib/int@2.0.1", "", {}, "sha512-Ht63fQp3wz/F8U4AlXEPb7hfJOIILs8Lq55jgtD7KueWtyjhVuzcsGLSTAWtZs3XJDZYdF1WcSKn+kBtbzupww=="],
+
+    "@stablelib/poly1305": ["@stablelib/poly1305@2.0.1", "", { "dependencies": { "@stablelib/constant-time": "^2.0.1", "@stablelib/wipe": "^2.0.1" } }, "sha512-D8xfZcL/5zeVARJ9I2fZOUCnZvsJx8G4JDQvD+ecsnaCildPtqZDwqqjtOc4cfHAdScrMjOzUVsssjXUTBw3YQ=="],
+
+    "@stablelib/wipe": ["@stablelib/wipe@2.0.1", "", {}, "sha512-1eU2K9EgOcV4qc9jcP6G72xxZxEm5PfeI5H55l08W95b4oRJaqhmlWRc4xZAm6IVSKhVNxMi66V67hCzzuMTAg=="],
+
+    "@stablelib/xchacha20": ["@stablelib/xchacha20@2.0.1", "", { "dependencies": { "@stablelib/binary": "^2.0.1", "@stablelib/chacha": "^2.0.1", "@stablelib/wipe": "^2.0.1" } }, "sha512-k55pNv7gIM4mUPU00+nJYTxKiUVNwAtsgrridC0aIU5cVbw9u6qP99x8ENu5eiwOEhZUNg+p3tTOLooCeAOJQA=="],
+
+    "@stablelib/xchacha20poly1305": ["@stablelib/xchacha20poly1305@2.0.1", "", { "dependencies": { "@stablelib/aead": "^2.0.0", "@stablelib/chacha20poly1305": "^2.0.1", "@stablelib/constant-time": "^2.0.1", "@stablelib/wipe": "^2.0.1", "@stablelib/xchacha20": "^2.0.1" } }, "sha512-OUZnnPsd4y5ConoMtADkxiz308vcYrpFT7hzTgXLo5UMyu7aPAP0FaOM+aJAnV+GHBoWp+2ncDOhvtho3VDp7g=="],
 
     "@surma/rollup-plugin-off-main-thread": ["@surma/rollup-plugin-off-main-thread@2.2.3", "", { "dependencies": { "ejs": "3.1.10", "json5": "2.2.3", "magic-string": "0.25.9", "string.prototype.matchall": "4.0.12" } }, "sha512-lR8q/9W7hZpMWweNiAKU7NQerBnzQQLvi8qnTDU/fxItPhtZVMbPV3lbCwjhIlNBe9Bbr5V+KHshvWmVSG9cxQ=="],
 
@@ -1649,6 +1669,8 @@
     "tsdown": ["tsdown@0.21.7", "", { "dependencies": { "ansis": "^4.2.0", "cac": "^7.0.0", "defu": "^6.1.4", "empathic": "^2.0.0", "hookable": "^6.1.0", "import-without-cache": "^0.2.5", "obug": "^2.1.1", "picomatch": "^4.0.4", "rolldown": "1.0.0-rc.12", "rolldown-plugin-dts": "^0.23.2", "semver": "^7.7.4", "tinyexec": "^1.0.4", "tinyglobby": "^0.2.15", "tree-kill": "^1.2.2", "unconfig-core": "^7.5.0", "unrun": "^0.2.34" }, "peerDependencies": { "@arethetypeswrong/core": "^0.18.1", "@tsdown/css": "0.21.7", "@tsdown/exe": "0.21.7", "@vitejs/devtools": "*", "publint": "^0.3.0", "typescript": "^5.0.0 || ^6.0.0", "unplugin-unused": "^0.5.0" }, "optionalPeers": ["@arethetypeswrong/core", "@tsdown/css", "@tsdown/exe", "@vitejs/devtools", "publint", "typescript", "unplugin-unused"], "bin": { "tsdown": "dist/run.mjs" } }, "sha512-ukKIxKQzngkWvOYJAyptudclkm4VQqbjq+9HF5K5qDO8GJsYtMh8gIRwicbnZEnvFPr6mquFwYAVZ8JKt3rY2g=="],
 
     "tslib": ["tslib@2.8.1", "", {}, "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="],
+
+    "twofish-ts": ["twofish-ts@1.0.2", "", {}, "sha512-ogx3C6CE/zviqpFApfixBIqxzfF0P8lO1e0ep0w7squTLmGMnbYx/s7CutQCmRxQO68XUvY4iseeQ09rNITYOA=="],
 
     "type-check": ["type-check@0.3.2", "", { "dependencies": { "prelude-ls": "~1.1.2" } }, "sha512-ZCmOJdvOWDBYJlzAoFkC+Q0+bUyEOS1ltgp1MGU03fqHG+dbi9tBFU2Rd9QKiDZFAYrhPh2JUf7rZRIuHRKtOg=="],
 
