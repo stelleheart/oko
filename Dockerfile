@@ -46,6 +46,13 @@ RUN bun run build
 
 # production environment
 FROM nginx:stable-alpine
+ARG NORMAL_ROUTER="false"
+ENV NORMAL_ROUTER=${NORMAL_ROUTER}
 COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx/default.browser.conf /etc/nginx/conf.d/default.browser.conf
+COPY nginx/default.hash.conf /etc/nginx/conf.d/default.hash.conf
+COPY nginx/40-select-router-config.sh /docker-entrypoint.d/40-select-router-config.sh
+RUN chmod +x /docker-entrypoint.d/40-select-router-config.sh \
+	&& rm -f /etc/nginx/conf.d/default.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
