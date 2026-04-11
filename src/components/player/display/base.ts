@@ -80,6 +80,23 @@ function sortLevelsByQuality(levels: Level[]): Level[] {
   return [...levels].sort((a, b) => (b.height || 0) - (a.height || 0));
 }
 
+function isForbiddenHlsError(data: {
+  response?: { code?: number; status?: number };
+  error?: { code?: number; message?: unknown };
+}): boolean {
+  const responseCode = data?.response?.code;
+  const responseStatus = data?.response?.status;
+  const errorCode = data?.error?.code;
+  const errorMessage = (data?.error?.message ?? "").toString();
+
+  return (
+    responseCode === 403 ||
+    responseStatus === 403 ||
+    errorCode === 403 ||
+    /\b403\b/.test(errorMessage)
+  );
+}
+
 export function makeVideoElementDisplayInterface(): DisplayInterface {
   const { emit, on, off } = makeEmitter<DisplayInterfaceEvents>();
   let source: LoadableSource | null = null;
@@ -193,6 +210,11 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
 
       if (!Hls.isSupported())
         throw new Error("HLS not supported. Update your browser. 🤦‍♂️");
+
+      let hasHeaderSetFailure = false;
+      let hasTriedProxyFallback = false;
+      let hlsSourceUrl = finalUrl;
+      
       if (!hls) {
         hls = new Hls({
           autoStartLoad: true,
@@ -204,6 +226,8 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
               try {
                 xhr.setRequestHeader(key, value);
               } catch {
+                hasHeaderSetFailure = true;
+                console.debug(`Failed to set header ${key} on XHR. This header may be restricted by the browser and cannot be set programmatically.`);
                 // Some headers are browser-restricted and can't be set in XHR.
               }
             });
@@ -215,6 +239,7 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
               try {
                 headers.set(key, value);
               } catch {
+                hasHeaderSetFailure = true;
                 // Some headers are browser-restricted and can't be set in fetch.
               }
             });
@@ -247,6 +272,19 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
           "Failed to execute 'appendBuffer' on 'SourceBuffer': This SourceBuffer has been removed from the parent media source.",
         ];
         hls?.on(Hls.Events.ERROR, (event, data) => {
+          if (
+            hasHeaderSetFailure &&
+            !hasTriedProxyFallback &&
+            !isUrlAlreadyProxied(hlsSourceUrl) &&
+            isForbiddenHlsError(data)
+          ) {
+            hasTriedProxyFallback = true;
+            hlsSourceUrl = createM3U8ProxyUrl(finalUrl, allHeaders);
+            hls?.loadSource(hlsSourceUrl);
+            hls?.startLoad(-1);
+            return;
+          }
+
           console.error("HLS error", data);
 
           // Extract detailed HLS error information
@@ -368,7 +406,7 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
       }
 
       hls.attachMedia(vid);
-      hls.loadSource(finalUrl);
+      hls.loadSource(hlsSourceUrl);
       vid.currentTime = startAt;
       return;
     }
