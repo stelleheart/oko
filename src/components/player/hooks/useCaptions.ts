@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import subsrt from "subsrt-ts";
 
 import { downloadCaption, downloadWebVTT } from "@/backend/helpers/subs";
-import { Caption, CaptionListItem } from "@/stores/player/slices/source";
+import type { Caption, CaptionListItem } from "@/stores/player/slices/source";
 import { usePlayerStore } from "@/stores/player/store";
 import { usePreferencesStore } from "@/stores/preferences";
 import { useSubtitleStore } from "@/stores/subtitles";
@@ -107,11 +107,18 @@ export function useCaptions() {
           track.details?.fragments?.filter(
             (frag) => frag !== null && frag.url !== null,
           ) ?? [];
+        const subtitleRequestHeaders = {
+          ...(source?.preferredHeaders ?? {}),
+          ...(source?.headers ?? {}),
+        };
 
         const vttCaptions = (
           await Promise.all(
             fragments.map(async (frag) => {
-              const vtt = await downloadWebVTT(frag.url);
+              const vtt = await downloadWebVTT(
+                frag.url,
+                subtitleRequestHeaders,
+              );
               return parseVttSubtitles(vtt);
             }),
           )
@@ -131,6 +138,7 @@ export function useCaptions() {
       setSubtitlePreference,
       setDirectCaption,
       selectedCaption,
+      source,
     ],
   );
 

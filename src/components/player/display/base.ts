@@ -179,12 +179,10 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
     hls = null;
 
     // Compute final URL with CDN processing
-    let finalUrl = processCdnLink(src.url);
+    const finalUrl = processCdnLink(src.url);
 
-    // Apply CORS proxy fallback for HLS streams when extension is not active
-    if (src.type === 'hls' && !isExtensionActiveCached() && !isUrlAlreadyProxied(finalUrl)) {
-      finalUrl = createM3U8ProxyUrl(finalUrl, { ...src.preferredHeaders, ...src.headers });
-    }
+    const allHeaders = { ...src.preferredHeaders, ...src.headers };
+    const hasHeaders = Object.keys(allHeaders).length > 0;
 
     if (src.type === "hls") {
       if (canPlayHlsNatively(vid)) {
@@ -200,6 +198,31 @@ export function makeVideoElementDisplayInterface(): DisplayInterface {
           autoStartLoad: true,
           maxBufferLength: 120, // 120 seconds
           maxMaxBufferLength: 240,
+          xhrSetup: (xhr) => {
+            if (!hasHeaders) return;
+            Object.entries(allHeaders).forEach(([key, value]) => {
+              try {
+                xhr.setRequestHeader(key, value);
+              } catch {
+                // Some headers are browser-restricted and can't be set in XHR.
+              }
+            });
+          },
+          fetchSetup: (context, initParams) => {
+            if (!hasHeaders) return new Request(context.url, initParams);
+            const headers = new Headers(initParams?.headers ?? undefined);
+            Object.entries(allHeaders).forEach(([key, value]) => {
+              try {
+                headers.set(key, value);
+              } catch {
+                // Some headers are browser-restricted and can't be set in fetch.
+              }
+            });
+            return new Request(context.url, {
+              ...initParams,
+              headers,
+            });
+          },
           abrEwmaDefaultEstimate: 5 * 1000 * 1000, // 5 Mbps default bandwidth estimate for better ABR decisions
           fragLoadPolicy: {
             default: {

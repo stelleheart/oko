@@ -96,11 +96,13 @@ export function convertSubtitlesToObjectUrl(text: string): string {
 
 export function convertProviderCaption(
   captions: RunOutput["stream"]["captions"],
+  requestHeaders?: Record<string, string>,
 ): CaptionListItem[] {
   return captions.map((v) => ({
     id: v.id,
     language: v.language,
     url: v.url,
+    requestHeaders,
     type: (v as any).type,
     needsProxy: v.hasCorsRestrictions,
     opensubtitles: v.opensubtitles,

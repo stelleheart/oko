@@ -835,6 +835,7 @@
         "experienceSection": "Viewing experience",
         "playbackItem": "Playback settings",
         "audioItem": "Audio",
+        "languageStreamsItem": "Stream language",
         "qualityItem": "Quality",
         "sourceItem": "Source",
         "subtitleItem": "Subtitles",
@@ -899,6 +900,10 @@
       },
       "audio": {
         "default": "Default"
+      },
+      "language": {
+        "originalStream": "Original",
+        "noStreams": "No language variants available"
       }
     },
     "metadata": {

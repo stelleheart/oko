@@ -1,10 +1,12 @@
-import { Stream } from "@p-stream/providers";
+import type { Stream } from "@p-stream/providers";
 
-import {
+import type { LanguageStream } from "@/stores/player/slices/source";
+import type {
   SourceFileStream,
   SourceQuality,
   SourceSliceSource,
 } from "@/stores/player/utils/qualities";
+import { convertProviderCaption } from "@/components/player/utils/captions";
 
 const allowedQualitiesMap: Record<SourceQuality, SourceQuality> = {
   "4k": "4k",
@@ -21,20 +23,22 @@ function isAllowedQuality(inp: string): inp is SourceQuality {
   return allowedQualities.includes(inp);
 }
 
-export function convertRunoutputToSource(out: {
-  stream: Stream;
-}): SourceSliceSource {
-  if (out.stream.type === "hls") {
+function getStreamLanguage(stream: Stream): string | null {
+  return (stream as Stream & { language?: string }).language ?? null;
+}
+
+export function convertStreamToSource(stream: Stream): SourceSliceSource {
+  if (stream.type === "hls") {
     return {
       type: "hls",
-      url: out.stream.playlist,
-      headers: out.stream.headers,
-      preferredHeaders: out.stream.preferredHeaders,
+      url: stream.playlist,
+      headers: stream.headers,
+      preferredHeaders: stream.preferredHeaders,
     };
   }
-  if (out.stream.type === "file") {
+  if (stream.type === "file") {
     const qualities: Partial<Record<SourceQuality, SourceFileStream>> = {};
-    Object.entries(out.stream.qualities).forEach((entry) => {
+    Object.entries(stream.qualities).forEach((entry) => {
       if (!isAllowedQuality(entry[0])) {
         console.warn(`unrecognized quality: ${entry[0]}`);
         return;
@@ -51,9 +55,28 @@ export function convertRunoutputToSource(out: {
     return {
       type: "file",
       qualities,
-      headers: out.stream.headers,
-      preferredHeaders: out.stream.preferredHeaders,
+      headers: stream.headers,
+      preferredHeaders: stream.preferredHeaders,
     };
   }
   throw new Error("unrecognized type");
+}
+
+export function convertRunoutputToSource(out: {
+  stream: Stream;
+}): SourceSliceSource {
+  return convertStreamToSource(out.stream);
+}
+
+export function convertStreamsToLanguageStreams(
+  streams: Stream[],
+): LanguageStream[] {
+  return streams.map((s) => ({
+    language: getStreamLanguage(s),
+    stream: convertStreamToSource(s),
+    captions: convertProviderCaption(s.captions || [], {
+      ...s.preferredHeaders,
+      ...s.headers,
+    }),
+  }));
 }

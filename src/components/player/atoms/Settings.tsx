@@ -12,7 +12,7 @@ import {
 import { VideoPlayerButton } from "@/components/player/internals/Button";
 import { Menu } from "@/components/player/internals/ContextMenu";
 import { useOverlayRouter } from "@/hooks/useOverlayRouter";
-import { CaptionListItem } from "@/stores/player/slices/source";
+import type { CaptionListItem } from "@/stores/player/slices/source";
 import { usePlayerStore } from "@/stores/player/store";
 
 import { AudioView } from "./settings/AudioView";

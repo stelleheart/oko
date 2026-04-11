@@ -1,13 +1,17 @@
 import { useInitializePlayer } from "@/components/player/hooks/useInitializePlayer";
 import {
-  CaptionListItem,
-  PlayerMeta,
-  PlayerStatus,
   playerStatus,
 } from "@/stores/player/slices/source";
+import type {
+  CaptionListItem,
+  LanguageStream,
+  PlayerMeta,
+  PlayerStatus,
+} from "@/stores/player/slices/source";
 import { usePlayerStore } from "@/stores/player/store";
-import { SourceSliceSource } from "@/stores/player/utils/qualities";
-import { ProgressMediaItem, useProgressStore } from "@/stores/progress";
+import type { SourceSliceSource } from "@/stores/player/utils/qualities";
+import { useProgressStore } from "@/stores/progress";
+import type { ProgressMediaItem } from "@/stores/progress";
 
 export interface Source {
   url: string;
@@ -37,7 +41,7 @@ export function usePlayer() {
   const setCaption = usePlayerStore((s) => s.setCaption);
   const setSourceId = usePlayerStore((s) => s.setSourceId);
   const status = usePlayerStore((s) => s.status);
-  const setEmbedId = usePlayerStore((s) => (s as any).setEmbedId);
+  const setEmbedId = usePlayerStore((s) => s.setEmbedId);
   const shouldStartFromBeginning = usePlayerStore(
     (s) => s.interface.shouldStartFromBeginning,
   );
@@ -64,11 +68,19 @@ export function usePlayer() {
       captions: CaptionListItem[],
       sourceId: string | null,
       startAtOverride?: number,
+      languageStreams?: LanguageStream[],
+      currentStreamLanguage?: string | null,
     ) {
       const start = startAtOverride ?? getProgress(progressStore.items, meta);
       setCaption(null);
       setEmbedId(null);
-      setSource(source, captions, start);
+      setSource(
+        source,
+        captions,
+        start,
+        languageStreams,
+        currentStreamLanguage,
+      );
       setSourceId(sourceId);
       setStatus(playerStatus.PLAYING);
       init();

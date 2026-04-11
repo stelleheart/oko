@@ -1,17 +1,19 @@
 /* eslint-disable no-console */
-import { ScrapeMedia } from "@p-stream/providers";
+import type { ScrapeMedia } from "@p-stream/providers";
 
 import { downloadCaption } from "@/backend/helpers/subs";
-import { MakeSlice } from "@/stores/player/slices/types";
+import type { MakeSlice } from "@/stores/player/slices/types";
 import {
+  selectQuality,
+} from "@/stores/player/utils/qualities";
+import type {
   SourceQuality,
   SourceSliceSource,
-  selectQuality,
 } from "@/stores/player/utils/qualities";
 import { useQualityStore } from "@/stores/quality";
 import googletranslate from "@/utils/translation/googletranslate";
 import { translate } from "@/utils/translation/index";
-import { ValuesOf } from "@/utils/typeguard";
+import type { ValuesOf } from "@/utils/typeguard";
 
 export const playerStatus = {
   IDLE: "idle",
@@ -60,6 +62,7 @@ export interface CaptionListItem {
   id: string;
   language: string;
   url: string;
+  requestHeaders?: Record<string, string>;
   type?: string;
   needsProxy: boolean;
   hls?: boolean;
@@ -80,6 +83,12 @@ export interface AudioTrack {
   id: string;
   label: string;
   language: string;
+}
+
+export interface LanguageStream {
+  language: string | null;
+  stream: SourceSliceSource;
+  captions: CaptionListItem[];
 }
 
 export interface TranslateTask {
@@ -103,6 +112,8 @@ export interface SourceSlice {
   currentAudioTrack: AudioTrack | null;
   captionList: CaptionListItem[];
   isLoadingExternalSubtitles: boolean;
+  languageStreams: LanguageStream[];
+  currentLanguageStreamLanguage: string | null;
   caption: {
     selected: Caption | null;
     asTrack: boolean;
@@ -117,7 +128,10 @@ export interface SourceSlice {
     stream: SourceSliceSource,
     captions: CaptionListItem[],
     startAt: number,
+    languageStreams?: LanguageStream[],
+    currentStreamLanguage?: string | null,
   ): void;
+  switchLanguageStream(language: string | null): void;
   switchQuality(quality: SourceQuality): void;
   setMeta(meta: PlayerMeta, status?: PlayerStatus): void;
   setCaption(caption: Caption | null): void;
@@ -192,6 +206,8 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
   audioTracks: [],
   captionList: [],
   isLoadingExternalSubtitles: false,
+  languageStreams: [],
+  currentLanguageStreamLanguage: null,
   currentQuality: null,
   currentAudioTrack: null,
   status: playerStatus.IDLE,
@@ -263,6 +279,8 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
     stream: SourceSliceSource,
     captions: CaptionListItem[],
     startAt: number,
+    languageStreams?: LanguageStream[],
+    currentStreamLanguage?: string | null,
   ) {
     let qualities: string[] = [];
     if (stream.type === "file") qualities = Object.keys(stream.qualities);
@@ -278,12 +296,48 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
       s.status = playerStatus.PLAYING;
       s.audioTracks = [];
       s.currentAudioTrack = null;
+      s.languageStreams = languageStreams || [];
+      s.currentLanguageStreamLanguage = currentStreamLanguage ?? null;
     });
     const store = get();
     store.redisplaySource(startAt);
 
     // Trigger external subtitle scraping after stream is loaded
     // This runs asynchronously so it doesn't block the stream loading
+    setTimeout(() => {
+      store.addExternalSubtitles();
+    }, 100);
+  },
+  switchLanguageStream(language: string | null) {
+    const store = get();
+    if (!language) {
+      // Switching back to original stream
+      set((s) => {
+        s.currentLanguageStreamLanguage = null;
+      });
+      return;
+    }
+
+    const languageStream = store.languageStreams.find(
+      (ls) => ls.language === language,
+    );
+    if (!languageStream) return;
+
+    // Switch to the new language stream
+    set((s) => {
+      s.source = languageStream.stream;
+      s.captionList = languageStream.captions;
+      s.currentLanguageStreamLanguage = language;
+      s.interface.error = undefined;
+      s.status = playerStatus.PLAYING;
+      s.audioTracks = [];
+      s.currentAudioTrack = null;
+    });
+
+    // Reload the stream at current playback position
+    store.redisplaySource(store.progress.time);
+
+    // Re-trigger external subtitle scraping for the new language
     setTimeout(() => {
       store.addExternalSubtitles();
     }, 100);
@@ -411,6 +465,8 @@ export const createSourceSlice: MakeSlice<SourceSlice> = (set, get) => ({
       s.audioTracks = [];
       s.captionList = [];
       s.isLoadingExternalSubtitles = false;
+      s.languageStreams = [];
+      s.currentLanguageStreamLanguage = null;
       s.currentQuality = null;
       s.currentAudioTrack = null;
       s.status = playerStatus.IDLE;

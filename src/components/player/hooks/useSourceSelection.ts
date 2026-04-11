@@ -1,8 +1,7 @@
 import {
-  EmbedOutput,
   NotFoundError,
-  SourcererOutput,
 } from "@p-stream/providers";
+import type { EmbedOutput, SourcererOutput } from "@p-stream/providers";
 import { useAsyncFn } from "react-use";
 
 import { isExtensionActiveCached } from "@/backend/extension/messaging";
@@ -13,12 +12,20 @@ import {
 } from "@/backend/helpers/report";
 import { getProviders } from "@/backend/providers/providers";
 import { convertProviderCaption } from "@/components/player/utils/captions";
-import { convertRunoutputToSource } from "@/components/player/utils/convertRunoutputToSource";
+import {
+  convertRunoutputToSource,
+  convertStreamsToLanguageStreams,
+} from "@/components/player/utils/convertRunoutputToSource";
 import { useOverlayRouter } from "@/hooks/useOverlayRouter";
 import { metaToScrapeMedia } from "@/stores/player/slices/source";
 import { usePlayerStore } from "@/stores/player/store";
 import { usePreferencesStore } from "@/stores/preferences";
 import { useProgressStore } from "@/stores/progress";
+
+function getStreamLanguage(stream: unknown): string | null {
+  const maybeStream = stream as { language?: string };
+  return maybeStream.language ?? null;
+}
 
 function getSavedProgress(items: Record<string, any>, meta: any): number {
   const item = items[meta?.tmdbId ?? ""];
@@ -84,10 +91,17 @@ export function useEmbedScraping(
     setSourceId(sourceId);
     setEmbedId(embedId);
     setCaption(null);
+    
+    const languageStreams = convertStreamsToLanguageStreams(result.stream);
     setSource(
       convertRunoutputToSource({ stream: result.stream[0] }),
-      convertProviderCaption(result.stream[0].captions),
+      convertProviderCaption(result.stream[0].captions, {
+        ...result.stream[0].preferredHeaders,
+        ...result.stream[0].headers,
+      }),
       getSavedProgress(progressItems, meta),
+      languageStreams,
+      getStreamLanguage(result.stream[0]),
     );
     // Save the last successful source when manually selected
     if (enableLastSuccessfulSource) {
@@ -157,10 +171,17 @@ export function useSourceScraping(sourceId: string | null, routerId: string) {
       if (isExtensionActiveCached()) await prepareStream(result.stream[0]);
       setEmbedId(null);
       setCaption(null);
+      
+      const languageStreams = convertStreamsToLanguageStreams(result.stream);
       setSource(
         convertRunoutputToSource({ stream: result.stream[0] }),
-        convertProviderCaption(result.stream[0].captions),
+        convertProviderCaption(result.stream[0].captions, {
+          ...result.stream[0].preferredHeaders,
+          ...result.stream[0].headers,
+        }),
         getSavedProgress(progressItems, meta),
+        languageStreams,
+        getStreamLanguage(result.stream[0]),
       );
       setSourceId(sourceId);
       // Save the last successful source when manually selected
@@ -206,10 +227,17 @@ export function useSourceScraping(sourceId: string | null, routerId: string) {
       setEmbedId(result.embeds[0].embedId);
       setCaption(null);
       if (isExtensionActiveCached()) await prepareStream(embedResult.stream[0]);
+      
+      const languageStreams = convertStreamsToLanguageStreams(embedResult.stream);
       setSource(
         convertRunoutputToSource({ stream: embedResult.stream[0] }),
-        convertProviderCaption(embedResult.stream[0].captions),
+        convertProviderCaption(embedResult.stream[0].captions, {
+          ...embedResult.stream[0].preferredHeaders,
+          ...embedResult.stream[0].headers,
+        }),
         getSavedProgress(progressItems, meta),
+        languageStreams,
+        getStreamLanguage(embedResult.stream[0]),
       );
       // Save the last successful source when manually selected
       if (enableLastSuccessfulSource) {

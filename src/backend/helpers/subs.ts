@@ -2,7 +2,7 @@ import { list } from "subsrt-ts";
 
 import { proxiedFetch } from "@/backend/helpers/fetch";
 import { convertSubtitlesToSrt } from "@/components/player/utils/captions";
-import { CaptionListItem } from "@/stores/player/slices/source";
+import type { CaptionListItem } from "@/stores/player/slices/source";
 import { SimpleCache } from "@/utils/cache";
 import { isUrlAlreadyProxied } from "@/components/player/utils/proxy";
 
@@ -26,12 +26,18 @@ export async function downloadCaption(
   if (cached) return cached;
 
   let data: string;
+  const captionHeaders = caption.requestHeaders ?? {};
+  const textHeaders = {
+    "Accept-Charset": "utf-8",
+    ...captionHeaders,
+  };
   if (caption.needsProxy) {
     if (isExtensionActiveCached()) {
       try {
         const extensionResponse = await sendExtensionRequest({
           url: caption.url,
           method: "GET",
+          headers: captionHeaders,
         });
         if (
           !extensionResponse?.success ||
@@ -44,21 +50,19 @@ export async function downloadCaption(
         // Fallback to proxy if extension fails (e.g., not whitelisted)
         data = await proxiedFetch<string>(caption.url, {
           responseType: "text",
-          headers: {
-            "Accept-Charset": "utf-8",
-          },
+          headers: textHeaders,
         });
       }
     } else {
       data = await proxiedFetch<string>(caption.url, {
         responseType: "text",
-        headers: {
-          "Accept-Charset": "utf-8",
-        },
+        headers: textHeaders,
       });
     }
   } else {
-    const response = await fetch(caption.url);
+    const response = await fetch(caption.url, {
+      headers: textHeaders,
+    });
     const contentType = response.headers.get("content-type") || "";
     const charset = contentType.includes("charset=")
       ? contentType.split("charset=")[1].toLowerCase()
@@ -81,15 +85,23 @@ export async function downloadCaption(
  * Downloads the WebVTT content. Uses extension or CORS proxy fallback
  * when the extension is not active.
  */
-export async function downloadWebVTT(url: string): Promise<string> {
+export async function downloadWebVTT(
+  url: string,
+  requestHeaders?: Record<string, string>,
+): Promise<string> {
   const cached = downloadCache.get(url);
   if (cached) return cached;
 
   let data: string;
+  const textHeaders = {
+    "Accept-Charset": "utf-8",
+    ...(requestHeaders ?? {}),
+  };
   if (isExtensionActiveCached()) {
     const extensionResponse = await sendExtensionRequest({
       url,
       method: "GET",
+      headers: requestHeaders,
     });
     if (!extensionResponse?.success || typeof extensionResponse.response.body !== "string") {
       throw new Error("failed to get webvtt data from extension");
@@ -98,13 +110,13 @@ export async function downloadWebVTT(url: string): Promise<string> {
   } else {
     // If the URL is already proxied, fetch directly; otherwise use the CORS proxy
     if (isUrlAlreadyProxied(url)) {
-      data = await fetch(url).then((v) => v.text());
+      data = await fetch(url, {
+        headers: textHeaders,
+      }).then((v) => v.text());
     } else {
       data = await proxiedFetch<string>(url, {
         responseType: "text",
-        headers: {
-          "Accept-Charset": "utf-8",
-        },
+        headers: textHeaders,
       });
     }
   }

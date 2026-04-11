@@ -259,6 +259,7 @@ export function useScrape() {
           discoverEmbeds: discoverEmbedsEvent,
         },
       });
+      console.log("Scrape output:", output);
       if (output && isExtensionActiveCached())
         await prepareStream(output.stream);
       return getResult(output);

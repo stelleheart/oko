@@ -1,4 +1,4 @@
-import { RunOutput } from "@p-stream/providers";
+import type { RunOutput, Stream } from "@p-stream/providers";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Navigate,
@@ -8,13 +8,17 @@ import {
 } from "react-router-dom";
 import { useAsync } from "react-use";
 
-import { DetailedMeta } from "@/backend/metadata/getmeta";
+import type { DetailedMeta } from "@/backend/metadata/getmeta";
+import { getProviders } from "@/backend/providers/providers";
 import { usePlayer } from "@/components/player/hooks/usePlayer";
 import { usePlayerMeta } from "@/components/player/hooks/usePlayerMeta";
 import { convertProviderCaption } from "@/components/player/utils/captions";
-import { convertRunoutputToSource } from "@/components/player/utils/convertRunoutputToSource";
+import {
+  convertStreamToSource,
+  convertStreamsToLanguageStreams,
+} from "@/components/player/utils/convertRunoutputToSource";
 import { useOverlayRouter } from "@/hooks/useOverlayRouter";
-import { ScrapingItems, ScrapingSegment } from "@/hooks/useProviderScrape";
+import type { ScrapingItems, ScrapingSegment } from "@/hooks/useProviderScrape";
 import { useQueryParam } from "@/hooks/useQueryParams";
 import { MetaPart } from "@/pages/parts/player/MetaPart";
 import { PlaybackErrorPart } from "@/pages/parts/player/PlaybackErrorPart";
@@ -24,7 +28,8 @@ import { ScrapeErrorPart } from "@/pages/parts/player/ScrapeErrorPart";
 import { ScrapingPart } from "@/pages/parts/player/ScrapingPart";
 import { SourceSelectPart } from "@/pages/parts/player/SourceSelectPart";
 import { useLastNonPlayerLink } from "@/stores/history";
-import { PlayerMeta, playerStatus } from "@/stores/player/slices/source";
+import { playerStatus } from "@/stores/player/slices/source";
+import type { PlayerMeta } from "@/stores/player/slices/source";
 import { usePlayerStore } from "@/stores/player/store";
 import { usePreferencesStore } from "@/stores/preferences";
 import { getProgressPercentage, useProgressStore } from "@/stores/progress";
@@ -32,6 +37,22 @@ import { needsOnboarding } from "@/utils/onboarding";
 import { parseTimestamp } from "@/utils/timestamp";
 
 import { BlurEllipsis } from "./layouts/SubPageLayout";
+
+function getProviderStreams(out: RunOutput): Stream[] {
+  const maybeOut = out as unknown as {
+    stream?: Stream | Stream[];
+    streams?: Stream[];
+  };
+
+  if (Array.isArray(maybeOut.stream)) return maybeOut.stream;
+  if (Array.isArray(maybeOut.streams)) return maybeOut.streams;
+  if (maybeOut.stream) return [maybeOut.stream];
+  return [];
+}
+
+function getStreamLanguage(stream: Stream): string | null {
+  return (stream as Stream & { language?: string }).language ?? null;
+}
 
 export function RealPlayerView() {
   const navigate = useNavigate();
@@ -72,7 +93,9 @@ export function RealPlayerView() {
   );
   const router = useOverlayRouter("settings");
   const openedWatchPartyRef = useRef<boolean>(false);
+  const tracedScrapeKeysRef = useRef<Set<string>>(new Set());
   const progressItems = useProgressStore((s) => s.items);
+  const routeParamsKey = `${params.media ?? ""}:${params.season ?? ""}:${params.episode ?? ""}`;
 
   // Reset last successful source when leaving the player
   useEffect(() => {
@@ -89,18 +112,14 @@ export function RealPlayerView() {
     };
   }, [setResumeFromSourceIdInStore]);
 
-  const paramsData = JSON.stringify({
-    media: params.media,
-    season: params.season,
-    episode: params.episode,
-  });
   useEffect(() => {
+    void routeParamsKey;
     reset();
     openedWatchPartyRef.current = false;
     return () => {
       reset();
     };
-  }, [paramsData, reset]);
+  }, [routeParamsKey, reset]);
 
   // Auto-open watch party menu if URL contains watchparty parameter
   useEffect(() => {
@@ -206,8 +225,46 @@ export function RealPlayerView() {
   }, [storeResumeFromSourceId, resumeFromSourceId, status]);
 
   const playAfterScrape = useCallback(
-    (out: RunOutput | null) => {
+    async (out: RunOutput | null) => {
       if (!out) return;
+
+      let streams = getProviderStreams(out);
+
+      // Autoplay/runAll may return only a single chosen stream even when the
+      // source scraper can provide multiple language variants. Hydrate variants
+      // with a direct source scrape when possible.
+      if (streams.length <= 1 && out.sourceId && scrapeMedia) {
+        try {
+          const sourceResult = await getProviders().runSourceScraper({
+            id: out.sourceId,
+            media: scrapeMedia,
+          });
+          if (sourceResult.stream && sourceResult.stream.length > 0) {
+            streams = sourceResult.stream;
+          }
+        } catch {
+          // Keep existing autoplay stream when source re-scrape fails.
+        }
+      }
+
+      const primaryStream = streams[0];
+      if (!primaryStream) return;
+
+      const traceKey = `${out.sourceId ?? "unknown-source"}:${streams
+        .map((stream) => `${stream.id}:${getStreamLanguage(stream) ?? "no-language"}`)
+        .join("|")}`;
+      if (!tracedScrapeKeysRef.current.has(traceKey)) {
+        tracedScrapeKeysRef.current.add(traceKey);
+        console.debug("[PlayerView] autoplay scrape streams", {
+          sourceId: out.sourceId,
+          streamCount: streams.length,
+          streams: streams.map((stream) => ({
+            id: stream.id,
+            type: stream.type,
+            language: getStreamLanguage(stream),
+          })),
+        });
+      }
 
       let startAt: number | undefined;
       if (startAtParam) startAt = parseTimestamp(startAtParam) ?? undefined;
@@ -218,15 +275,21 @@ export function RealPlayerView() {
       playerStore.clearFailedEmbeds();
 
       playMedia(
-        convertRunoutputToSource(out),
-        convertProviderCaption(out.stream.captions),
+        convertStreamToSource(primaryStream),
+        convertProviderCaption(primaryStream.captions, {
+          ...primaryStream.preferredHeaders,
+          ...primaryStream.headers,
+        }),
         out.sourceId,
         shouldStartFromBeginning ? 0 : startAt,
+        convertStreamsToLanguageStreams(streams),
+        getStreamLanguage(primaryStream),
       );
       setShouldStartFromBeginning(false);
     },
     [
       playMedia,
+      scrapeMedia,
       startAtParam,
       shouldStartFromBeginning,
       setShouldStartFromBeginning,

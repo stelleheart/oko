@@ -198,7 +198,10 @@ export default function VideoTesterView() {
 
       // Convert captions
       const captions = streamData.captions
-        ? convertProviderCaption(streamData.captions)
+        ? convertProviderCaption(streamData.captions, {
+            ...streamData.preferredHeaders,
+            ...streamData.headers,
+          })
         : [];
 
       // Prepare stream headers if extension is active and headers are present

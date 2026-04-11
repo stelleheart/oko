@@ -20,6 +20,10 @@ export function SettingsMenu({ id }: { id: string }) {
   const selectedCaptionLanguage = usePlayerStore(
     (s) => s.caption.selected?.language,
   );
+  const languageStreams = usePlayerStore((s) => s.languageStreams);
+  const currentLanguageStreamLanguage = usePlayerStore(
+    (s) => s.currentLanguageStreamLanguage,
+  );
   const subtitlesEnabled = useSubtitleStore((s) => s.enabled);
   const currentSourceId = usePlayerStore((s) => s.sourceId);
   const currentEmbedId = usePlayerStore(
@@ -49,6 +53,17 @@ export function SettingsMenu({ id }: { id: string }) {
       currentAudioTrack.label ??
       t("player.menus.subtitles.unknownLanguage"))
     : undefined;
+
+  const hasAudioLanguageOptions =
+    currentAudioTrack !== null || languageStreams.length > 0;
+
+  const selectedLanguageStreamPretty = useMemo(() => {
+    if (!currentLanguageStreamLanguage) return undefined;
+    return (
+      getPrettyLanguageNameFromLocale(currentLanguageStreamLanguage) ??
+      currentLanguageStreamLanguage
+    );
+  }, [currentLanguageStreamLanguage]);
 
   const source = usePlayerStore((s) => s.source);
 
@@ -90,15 +105,19 @@ export function SettingsMenu({ id }: { id: string }) {
             {selectedLanguagePretty ?? t("player.menus.subtitles.offChoice")}
           </span>
         </Menu.ChevronLink>
-        {currentAudioTrack ? (
+        {hasAudioLanguageOptions ? (
           <Menu.ChevronLink
             box
             onClick={() => router.navigate("/audio")}
-            rightText={selectedAudioLanguagePretty ?? undefined}
+            rightText={
+              selectedAudioLanguagePretty ?? selectedLanguageStreamPretty
+            }
           >
             {t("player.menus.settings.audioItem")}
             <span className="text-type-secondary text-sm">
-              {selectedAudioLanguagePretty}
+              {selectedAudioLanguagePretty ??
+                selectedLanguageStreamPretty ??
+                t("player.menus.audio.default")}
             </span>
           </Menu.ChevronLink>
         ) : (
