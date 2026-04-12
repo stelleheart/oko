@@ -451,16 +451,42 @@ export function CaptionsView({
   const { t } = useTranslation();
   const router = useOverlayRouter(id);
   const selectedCaption = usePlayerStore((s) => s.caption.selected);
+  const getHlsCaptionList = usePlayerStore((s) => s.display?.getCaptionList);
+  const lastSelectedLanguage = useSubtitleStore((s) => s.lastSelectedLanguage);
   const currentTranslateTask = usePlayerStore((s) => s.caption.translateTask);
-  const { disable, selectRandomCaptionFromLastUsedLanguage } = useCaptions();
+  const { disable, selectCaptionById } = useCaptions();
   const [isRandomSelecting, setIsRandomSelecting] = useState(false);
   const [dragging, setDragging] = useState(false);
 
   const handleRandomSelect = async () => {
     if (isRandomSelecting) return; // Prevent multiple simultaneous calls
     setIsRandomSelecting(true);
+
+    const targetLanguage = selectedCaption?.language ?? lastSelectedLanguage ?? "en";
+    const normalizeLang = (lang: string) => lang.toLowerCase().split("-")[0];
+    const isLanguageMatch = (captionLanguage: string) => {
+      const captionLang = captionLanguage.toLowerCase();
+      const targetLang = targetLanguage.toLowerCase();
+      return (
+        captionLang === targetLang ||
+        normalizeLang(captionLang) === normalizeLang(targetLang)
+      );
+    };
+
     try {
-      await selectRandomCaptionFromLastUsedLanguage();
+      const byTargetLanguage = captions.filter(
+        (caption) =>
+          caption.id !== selectedCaption?.id && isLanguageMatch(caption.language),
+      );
+
+      const fallback = captions.filter(
+        (caption) => caption.id !== selectedCaption?.id,
+      );
+
+      const chosenCaption = byTargetLanguage[0] ?? fallback[0];
+      if (chosenCaption) {
+        await selectCaptionById(chosenCaption.id);
+      }
     } finally {
       setIsRandomSelecting(false);
     }
@@ -470,7 +496,6 @@ export function CaptionsView({
   const srtData = usePlayerStore((s) => s.caption.selected?.srtData);
   const selectedLanguage = usePlayerStore((s) => s.caption.selected?.language);
   const captionList = usePlayerStore((s) => s.captionList);
-  const getHlsCaptionList = usePlayerStore((s) => s.display?.getCaptionList);
   const isLoadingExternalSubtitles = usePlayerStore(
     (s) => s.isLoadingExternalSubtitles,
   );
@@ -480,11 +505,15 @@ export function CaptionsView({
   const matchScore = useCaptionMatchScore();
 
   // Get combined caption list
-  const captions = useMemo(
-    () =>
-      captionList.length !== 0 ? captionList : (getHlsCaptionList?.() ?? []),
-    [captionList, getHlsCaptionList],
-  );
+  const captions = useMemo(() => {
+    const hlsCaptions = getHlsCaptionList?.() ?? [];
+    const merged = [...captionList, ...hlsCaptions];
+
+    return merged.filter(
+      (caption, index, list) =>
+        list.findIndex((candidate) => candidate.id === caption.id) === index,
+    );
+  }, [captionList, getHlsCaptionList]);
 
   // Split captions into source and external (opensubtitles)
   const sourceCaptions = useMemo(
