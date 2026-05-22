@@ -26,6 +26,7 @@ function useDisplayInterface() {
     }
     return () => {
       if (displayRef.current) {
+        displayRef.current.destroy();
         displayRef.current = null;
         setDisplay(null);
       }
