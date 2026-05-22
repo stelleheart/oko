@@ -21,7 +21,7 @@ export function useOnlineListener() {
       if (abort) abort.abort();
       abort = new AbortController();
       const signal = abort.signal;
-      fetch("/ping.txt", { signal })
+      fetch("/ping.txt", { cache: "no-store", signal })
         .then(() => {
           updateOnline(true);
           ref.current = true;
