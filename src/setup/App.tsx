@@ -22,6 +22,7 @@ import { useGlobalKeyboardEvents } from "@/hooks/useGlobalKeyboardEvents";
 import { useOnlineListener } from "@/hooks/usePing";
 import MaintenancePage from "@/pages/errors/MaintenancePage";
 import { NotFoundPage } from "@/pages/errors/NotFoundPage";
+import { ErrorBoundary } from "@/pages/errors/ErrorBoundary";
 import { HomePage } from "@/pages/HomePage";
 import { LoginPage } from "@/pages/Login";
 import { RegisterPage } from "@/pages/Register";
@@ -227,9 +228,11 @@ function App() {
             path="/media/:media"
             element={
               <LegacyUrlView>
-                <Suspense fallback={null}>
-                  <PlayerView />
-                </Suspense>
+                <ErrorBoundary>
+                  <Suspense fallback={null}>
+                    <PlayerView />
+                  </Suspense>
+                </ErrorBoundary>
               </LegacyUrlView>
             }
           />
@@ -237,9 +240,11 @@ function App() {
             path="/media/:media/:season/:episode"
             element={
               <LegacyUrlView>
-                <Suspense fallback={null}>
-                  <PlayerView />
-                </Suspense>
+                <ErrorBoundary>
+                  <Suspense fallback={null}>
+                    <PlayerView />
+                  </Suspense>
+                </ErrorBoundary>
               </LegacyUrlView>
             }
           />
