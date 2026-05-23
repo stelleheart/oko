@@ -19,6 +19,6 @@ export async function clearPrecacheAndReload(): Promise<never> {
     // If caches.keys() fails (e.g., cross-origin denial), proceed with reload anyway
   }
   // Hard reload bypasses SW cache and forces fresh fetch from network
-  window.location.reload(true);
+  window.location.reload();
   throw new Error("unreachable");
 }

@@ -37,9 +37,14 @@ function useBaseScrape() {
   const initEvent = useCallback((evt: ScraperEvent<"init">) => {
     setSources(
       evt.sourceIds
-        .map((v) => {
+        .map((v): ScrapingSegment | null => {
           const source = getCachedMetadata().find((s) => s.id === v);
-          if (!source) throw new Error("invalid source id");
+          if (!source) {
+            console.warn(
+              `useProviderScrape: unknown source id "${v}" — skipping`,
+            );
+            return null;
+          }
           const out: ScrapingSegment = {
             name: source.name,
             id: source.id,
@@ -48,6 +53,7 @@ function useBaseScrape() {
           };
           return out;
         })
+        .filter((s): s is ScrapingSegment => s !== null)
         .reduce<Record<string, ScrapingSegment>>((a, v) => {
           a[v.id] = v;
           return a;
@@ -87,7 +93,12 @@ function useBaseScrape() {
           const source = getCachedMetadata().find(
             (src) => src.id === v.embedScraperId,
           );
-          if (!source) throw new Error("invalid source id");
+          if (!source) {
+            console.warn(
+              `useProviderScrape: unknown embed scraper id "${v.embedScraperId}" — skipping embed "${v.id}"`,
+            );
+            return;
+          }
           const out: ScrapingSegment = {
             embedId: v.embedScraperId,
             name: source.name,
@@ -101,7 +112,12 @@ function useBaseScrape() {
       });
       setSourceOrder((s) => {
         const source = s.find((v) => v.id === evt.sourceId);
-        if (!source) throw new Error("invalid source id");
+        if (!source) {
+          console.warn(
+            `useProviderScrape: source "${evt.sourceId}" not found in sourceOrder — skipping embed discovery`,
+          );
+          return s;
+        }
         source.children = evt.embeds.map((v) => v.id);
         return [...s];
       });
@@ -260,8 +276,13 @@ export function useScrape() {
         },
       });
       console.log("Scrape output:", output);
-      if (output && isExtensionActiveCached())
-        await prepareStream(output.stream);
+      if (output && isExtensionActiveCached()) {
+        try {
+          await prepareStream(output.stream);
+        } catch (err) {
+          console.error("useProviderScrape: prepareStream failed", err);
+        }
+      }
       return getResult(output);
     },
     [
