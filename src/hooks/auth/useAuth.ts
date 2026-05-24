@@ -226,28 +226,10 @@ export function useAuth() {
       try {
         user = await getUser(backendUrl, account.token);
       } catch (err) {
-        const anyError: any = err;
-        if (
-          anyError?.response?.status === 401 ||
-          anyError?.response?.status === 403 ||
-          anyError?.response?.status === 400
-        ) {
-          // Check if this is a CF Access block (returns HTML instead of JSON)
-          const contentType = anyError?.response?.headers?.get?.("content-type") ?? "";
-          const isCFAccess = contentType.includes("text/html");
-          if (isCFAccess) {
-            // CF Access expired — clear SW precache and let it re-intercept on reload
-            const { clearPrecacheAndReload } = await import(
-              "@/utils/cacheControl"
-            );
-            await clearPrecacheAndReload();
-            return; // never reached
-          }
-          await logout();
-          return;
-        }
-        console.error(err);
-        throw err;
+        // Backend error — clear SW precache to ensure we're not running a stale cached version
+        const { clearPrecacheAndReload } = await import("@/utils/cacheControl");
+        await clearPrecacheAndReload();
+        return; // never reached
       }
 
       const [bookmarks, progress, watchHistory, settings, groupOrder] =
