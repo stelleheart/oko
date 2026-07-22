@@ -38,8 +38,7 @@ const QUEUE_RETRY_DELAY_MS = 5000; // Retry failed queue items after 5s
 // }
 
 export function TraktBookmarkSyncer() {
-  const { traktUpdateQueue, removeTraktUpdateItem, replaceBookmarks } =
-    useBookmarkStore();
+  const { updateQueue, removeUpdateItem, replaceBookmarks } = useBookmarkStore();
   const { accessToken } = useTraktAuthStore();
   const isSyncingRef = useRef(false);
   const [hydrated, setHydrated] = useState(false);
@@ -52,7 +51,7 @@ export function TraktBookmarkSyncer() {
     let retryTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
     const processQueue = async () => {
-      const queue = [...traktUpdateQueue];
+      const queue = [...updateQueue];
       if (queue.length === 0) return;
 
       for (const item of queue) {
@@ -115,7 +114,7 @@ export function TraktBookmarkSyncer() {
             // }
           }
 
-          removeTraktUpdateItem(item.id);
+          removeUpdateItem(item.id);
         } catch (error) {
           console.error("Failed to sync bookmark to Trakt", error);
           if (!retryTimeoutId) {
@@ -132,7 +131,7 @@ export function TraktBookmarkSyncer() {
     return () => {
       if (retryTimeoutId) clearTimeout(retryTimeoutId);
     };
-  }, [accessToken, traktUpdateQueue, removeTraktUpdateItem, retryTrigger]);
+  }, [accessToken, updateQueue, removeUpdateItem, retryTrigger]);
 
   // Push local bookmarks to Trakt watchlist (TODO implement collections/groups sync)
   const syncBookmarksToTrakt = useCallback(async () => {
