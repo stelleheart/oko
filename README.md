@@ -33,8 +33,8 @@ Type the following commands into your terminal / command line to run P-Stream lo
 git clone https://github.com/p-stream/p-stream.git
 cd smov
 git pull
-pnpm install
-pnpm run dev
+bun install
+bun run dev
 ```
 
 Then you can visit the local instance [here](http://localhost:5173) or, at local host on port 5173.
