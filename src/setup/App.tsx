@@ -1,5 +1,15 @@
 import { ReactElement, Suspense, lazy, useEffect } from "react";
-import { lazyWithPreload } from "react-lazy-with-preload";
+import type { ComponentType } from "react";
+
+function lazyWithPreload<T extends ComponentType<unknown>>(
+  factory: () => Promise<{ default: T }>,
+) {
+  const LazyComponent = lazy(factory);
+  (LazyComponent as unknown as { preload: () => void }).preload = () => {
+    factory();
+  };
+  return LazyComponent;
+}
 import {
   Navigate,
   Route,
@@ -131,8 +141,8 @@ const TestView = lazy(() =>
 const PlayerView = lazyWithPreload(() => import("@/pages/PlayerView"));
 const SettingsPage = lazyWithPreload(() => import("@/pages/Settings"));
 
-PlayerView.preload();
-SettingsPage.preload();
+(PlayerView as unknown as { preload: () => void }).preload();
+(SettingsPage as unknown as { preload: () => void }).preload();
 
 function LegacyUrlView({ children }: { children: ReactElement }) {
   const location = useLocation();
