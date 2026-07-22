@@ -4,7 +4,6 @@ import loadVersion from "vite-plugin-package-version";
 import { VitePWA } from "vite-plugin-pwa";
 import checker from "vite-plugin-checker";
 import path from "path";
-import { handlebars } from "./plugins/handlebars";
 import { type PluginOption, loadEnv } from "vite";
 import { visualizer } from "rollup-plugin-visualizer";
 
@@ -20,21 +19,85 @@ const captioningPackages = [
   "fuse",
 ];
 
+function getVar(vars: Record<string, unknown>, path: string): unknown {
+  return path.split(".").reduce<unknown>((acc, k) => {
+    return acc != null && typeof acc === "object"
+      ? (acc as Record<string, unknown>)[k]
+      : undefined;
+  }, vars);
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function applyTemplate(html: string, vars: Record<string, unknown>): string {
+  html = html.replace(
+    /\{\{#if\s+([^\s}]+)\s*\}\}([\s\S]*?)(?:\{\{else\}\}([\s\S]*?))?\{\{\/if\}\}/g,
+    (_, path, truthy, falsy) => {
+      const v = getVar(vars, path);
+      return v ? truthy : (falsy || "");
+    },
+  );
+  html = html.replace(/\{\{\{([^}]+?)\}\}\}/g, (_, path) => {
+    const v = getVar(vars, path.trim());
+    return v == null ? "" : String(v);
+  });
+  html = html.replace(/\{\{([^#/{][^}]*?)\}\}/g, (_, path) => {
+    const v = getVar(vars, path.trim());
+    if (v == null) return "";
+    return escapeHtml(String(v));
+  });
+  return html;
+}
+
+const OPENSEARCH_XML_TEMPLATE = `<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>oko</ShortName>
+  <Description>The place for your favorite movies &amp; shows</Description>
+  <InputEncoding>UTF-8</InputEncoding>
+  <Url type="text/html" template="{{ routeDomain }}/browse/?q={searchTerms}" />
+</OpenSearchDescription>
+`;
+
+function indexHtmlTransform(env: Record<string, string>): PluginOption {
+  const routeDomain =
+    env.VITE_APP_DOMAIN + (env.VITE_NORMAL_ROUTER !== "true" ? "/#" : "");
+  const opensearchEnabled = env.VITE_OPENSEARCH_ENABLED === "true";
+  const vars: Record<string, unknown> = {
+    opensearchEnabled,
+    routeDomain,
+    env,
+  };
+  return {
+    name: "index-html-transform",
+    transformIndexHtml: {
+      order: "pre",
+      handler(html) {
+        return applyTemplate(html, vars);
+      },
+    },
+    generateBundle() {
+      this.emitFile({
+        type: "asset",
+        fileName: "opensearch.xml",
+        source: applyTemplate(OPENSEARCH_XML_TEMPLATE, vars),
+      });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
   return {
     base: env.VITE_BASE_URL || "/",
     plugins: [
-      handlebars({
-        vars: {
-          opensearchEnabled: env.VITE_OPENSEARCH_ENABLED === "true",
-          routeDomain:
-            env.VITE_APP_DOMAIN +
-            (env.VITE_NORMAL_ROUTER !== "true" ? "/#" : ""),
-          domain: env.VITE_APP_DOMAIN,
-          env,
-        },
-      }),
+      indexHtmlTransform(env),
       react({
         babel: {
           presets: [
