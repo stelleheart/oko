@@ -1,4 +1,4 @@
-import { ReactElement, Suspense, lazy, useEffect, useState } from "react";
+import { ReactElement, Suspense, lazy, useEffect } from "react";
 import { lazyWithPreload } from "react-lazy-with-preload";
 import {
   Navigate,
@@ -20,7 +20,6 @@ import { SupportInfoModal } from "@/components/overlays/SupportInfoModal";
 import { TraktAuthHandler } from "@/components/TraktAuthHandler";
 import { useGlobalKeyboardEvents } from "@/hooks/useGlobalKeyboardEvents";
 import { useOnlineListener } from "@/hooks/usePing";
-import MaintenancePage from "@/pages/errors/MaintenancePage";
 import { NotFoundPage } from "@/pages/errors/NotFoundPage";
 import { ErrorBoundary } from "@/pages/errors/ErrorBoundary";
 import { HomePage } from "@/pages/HomePage";
@@ -183,27 +182,11 @@ function QueryView() {
   return null;
 }
 
-export const maintenanceTime = "March 31th 11:00 PM - 5:00 AM EST";
-
 function App() {
   useHistoryListener();
   useOnlineListener();
   useGlobalKeyboardEvents();
   useClearModalsOnNavigation();
-  const maintenance = false; // Shows maintance page
-  const [showDowntime, setShowDowntime] = useState(maintenance);
-
-  const handleButtonClick = () => {
-    setShowDowntime(false);
-  };
-
-  useEffect(() => {
-    const sessionToken = sessionStorage.getItem("downtimeToken");
-    if (!sessionToken && maintenance) {
-      setShowDowntime(true);
-      sessionStorage.setItem("downtimeToken", "true");
-    }
-  }, [setShowDowntime, maintenance]);
 
   return (
     <Layout>
@@ -217,8 +200,7 @@ function App() {
       <DetailsModal id="details" />
       <DetailsModal id="discover-details" />
       <DetailsModal id="player-details" />
-      {!showDowntime && (
-        <Routes>
+      <Routes>
           {/* functional routes */}
           <Route path="/s/:query" element={<QuickSearch />} />
           <Route path="/search/:type" element={<Navigate to="/browse" />} />
@@ -461,10 +443,6 @@ function App() {
           ) : null}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
-      )}
-      {showDowntime && (
-        <MaintenancePage onHomeButtonClick={handleButtonClick} />
-      )}
     </Layout>
   );
 }
