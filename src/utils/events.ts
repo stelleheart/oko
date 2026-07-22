@@ -1,34 +1,44 @@
-export type EventMap = Record<string, any>;
-type EventKey<T extends EventMap> = string & keyof T;
-type EventReceiver<T> = (params: T) => void;
-
-export interface Emitter<T extends EventMap> {
-  on<K extends EventKey<T>>(eventName: K, fn: EventReceiver<T[K]>): void;
-  off<K extends EventKey<T>>(eventName: K, fn: EventReceiver<T[K]>): void;
-  emit<K extends EventKey<T>>(eventName: K, params: T[K]): void;
-}
+type EventValue = unknown;
+type EventMap = Record<string, EventValue>;
 
 export interface Listener<T extends EventMap> {
-  on<K extends EventKey<T>>(eventName: K, fn: EventReceiver<T[K]>): void;
-  off<K extends EventKey<T>>(eventName: K, fn: EventReceiver<T[K]>): void;
+  on<K extends keyof T>(eventName: K, fn: (value: T[K]) => void): void;
+  off<K extends keyof T>(eventName: K, fn: (value: T[K]) => void): void;
+}
+
+export interface Emitter<T extends EventMap> extends Listener<T> {
+  emit<K extends keyof T>(eventName: K, value: T[K]): void;
 }
 
 export function makeEmitter<T extends EventMap>(): Emitter<T> {
-  const listeners: Partial<
-    Record<EventKey<T>, ((...params: any[]) => void)[]>
-  > = {};
+  const target = new EventTarget();
+  const handlers = new WeakMap<
+    (value: never) => void,
+    { eventName: string; listener: EventListener }
+  >();
 
   return {
     on(eventName, fn) {
-      if (!listeners[eventName]) listeners[eventName] = [];
-      listeners[eventName]?.push(fn);
+      const listener: EventListener = (event: Event) => {
+        fn((event as CustomEvent<typeof fn extends (v: infer V) => void ? V : never>).detail);
+      };
+      handlers.set(fn as (value: never) => void, {
+        eventName: eventName as string,
+        listener,
+      });
+      target.addEventListener(eventName as string, listener);
     },
     off(eventName, fn) {
-      listeners[eventName] =
-        listeners[eventName]?.filter((v) => v !== fn) ?? [];
+      const entry = handlers.get(fn as (value: never) => void);
+      if (entry && entry.eventName === (eventName as string)) {
+        target.removeEventListener(entry.eventName, entry.listener);
+        handlers.delete(fn as (value: never) => void);
+      }
     },
-    emit(eventName, params) {
-      (listeners[eventName] ?? []).forEach((fn) => fn(params));
+    emit(eventName, value) {
+      target.dispatchEvent(
+        new CustomEvent(eventName as string, { detail: value }),
+      );
     },
   };
 }
