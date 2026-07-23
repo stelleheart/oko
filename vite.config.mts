@@ -189,9 +189,6 @@ export default defineConfig(({ mode }) => {
             if (id.includes("hls.js")) {
               return "hls";
             }
-            if (id.includes("node-forge") || id.includes("crypto-js")) {
-              return "auth";
-            }
             if (id.includes("locales") && !id.includes("en.json")) {
               return "locales";
             }

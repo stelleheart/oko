@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAsyncFn } from "react-use";
 
@@ -62,6 +62,12 @@ export function Device(props: {
   );
 }
 
+type DeviceListItem = {
+  current: boolean;
+  id: string;
+  name: string;
+};
+
 export function DeviceListPart(props: {
   loading?: boolean;
   error?: boolean;
@@ -72,39 +78,64 @@ export function DeviceListPart(props: {
   const seed = useAuthStore((s) => s.account?.seed);
   const sessions = props.sessions;
   const currentSessionId = useAuthStore((s) => s.account?.sessionId);
-  const deviceListSorted = useMemo(() => {
-    if (!seed) return [];
-    let list = sessions.map((session) => {
-      let decryptedName: string;
-      const parts = session.device?.split(".");
-      if (!parts || parts.length !== 3) {
-        // Legacy plaintext device name (stored before encryption was added)
-        decryptedName =
-          session.device || t("settings.account.devices.unknownDevice");
-      } else {
+  const fallback = t("settings.account.devices.unknownDevice");
+  const [deviceListSorted, setDeviceListSorted] = useState<DeviceListItem[]>(
+    [],
+  );
+
+  useEffect(() => {
+    if (!seed) {
+      setDeviceListSorted([]);
+      return;
+    }
+    let cancelled = false;
+    Promise.all(
+      sessions.map(async (session) => {
+        const parts = session.device?.split(".");
+        if (!parts || parts.length !== 3) {
+          // Legacy plaintext device name (stored before encryption was added)
+          return {
+            current: session.id === currentSessionId,
+            id: session.id,
+            name: session.device || fallback,
+          };
+        }
         try {
-          decryptedName = decryptData(session.device, base64ToBuffer(seed));
+          const name = await decryptData(
+            session.device,
+            base64ToBuffer(seed),
+          );
+          return {
+            current: session.id === currentSessionId,
+            id: session.id,
+            name,
+          };
         } catch (error) {
           console.warn(
             `Failed to decrypt device name for session ${session.id}:`,
             error,
           );
-          decryptedName = t("settings.account.devices.unknownDevice");
+          return {
+            current: session.id === currentSessionId,
+            id: session.id,
+            name: fallback,
+          };
         }
-      }
-      return {
-        current: session.id === currentSessionId,
-        id: session.id,
-        name: decryptedName,
-      };
+      }),
+    ).then((list) => {
+      if (cancelled) return;
+      list.sort((a, b) => {
+        if (a.current) return -1;
+        if (b.current) return 1;
+        return a.name.localeCompare(b.name);
+      });
+      setDeviceListSorted(list);
     });
-    list = list.sort((a, b) => {
-      if (a.current) return -1;
-      if (b.current) return 1;
-      return a.name.localeCompare(b.name);
-    });
-    return list;
-  }, [seed, sessions, currentSessionId, t]);
+    return () => {
+      cancelled = true;
+    };
+  }, [seed, sessions, currentSessionId, fallback]);
+
   if (!seed) return null;
 
   return (

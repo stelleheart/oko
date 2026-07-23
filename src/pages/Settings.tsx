@@ -5,7 +5,6 @@ import { useAsyncFn } from "react-use";
 
 import {
   base64ToBuffer,
-  decryptData,
   encryptData,
 } from "@/backend/accounts/crypto";
 import { getSessions, updateSession } from "@/backend/accounts/sessions";
@@ -23,6 +22,7 @@ import { Heading1, Heading2, Paragraph } from "@/components/utils/Text";
 import { Transition } from "@/components/utils/Transition";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useBackendUrl } from "@/hooks/auth/useBackendUrl";
+import { useDecryptedDeviceName } from "@/hooks/auth/useDecryptedDeviceName";
 import { useIsIOS, useIsMobile, useIsPWA } from "@/hooks/useIsMobile";
 import { useSettingsState } from "@/hooks/useSettingsState";
 import { AccountActionsPart } from "@/pages/parts/settings/AccountActionsPart";
@@ -552,19 +552,10 @@ export function SettingsPage() {
   const updateProfile = useAuthStore((s) => s.setAccountProfile);
   const updateDeviceName = useAuthStore((s) => s.updateDeviceName);
   const updateNickname = useAuthStore((s) => s.setAccountNickname);
-  const decryptedName = useMemo(() => {
-    if (!account) return "";
-    const parts = account.deviceName?.split(".");
-    if (!parts || parts.length !== 3) {
-      return account.deviceName || t("settings.account.devices.unknownDevice");
-    }
-    try {
-      return decryptData(account.deviceName, base64ToBuffer(account.seed));
-    } catch (error) {
-      console.warn("Failed to decrypt device name, using fallback:", error);
-      return t("settings.account.devices.unknownDevice");
-    }
-  }, [account, t]);
+  const decryptedName = useDecryptedDeviceName(
+    account?.deviceName,
+    account?.seed,
+  );
 
   const backendUrl = useBackendUrl();
 

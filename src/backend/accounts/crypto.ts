@@ -1,8 +1,8 @@
 import { pbkdf2Async } from "@noble/hashes/pbkdf2";
 import { sha256 } from "@noble/hashes/sha256";
+import { ed25519 } from "@noble/curves/ed25519.js";
 import { generateMnemonic, validateMnemonic } from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english";
-import forge from "node-forge";
 
 type Keys = {
   privateKey: Uint8Array;
@@ -10,22 +10,51 @@ type Keys = {
   seed: Uint8Array;
 };
 
-function uint8ArrayToBuffer(array: Uint8Array): forge.util.ByteStringBuffer {
-  return forge.util.createBuffer(
-    Array.from(array)
-      .map((byte) => String.fromCharCode(byte))
-      .join(""),
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
+export function bytesToBase64(bytes: Uint8Array): string {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 1) {
+    bin += String.fromCharCode(bytes[i]);
+  }
+  return btoa(bin);
+}
+
+export function bytesToBase64Url(bytes: Uint8Array): string {
+  return bytesToBase64(bytes)
+    .replace(/\//g, "_")
+    .replace(/\+/g, "-")
+    .replace(/=+$/, "");
+}
+
+export function base64ToBuffer(data: string): Uint8Array {
+  const bin = atob(data);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i += 1) {
+    bytes[i] = bin.charCodeAt(i);
+  }
+  return bytes;
+}
+
+async function importAesKey(secret: Uint8Array): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
+    "raw",
+    secret as BufferSource,
+    { name: "AES-GCM" },
+    false,
+    ["encrypt", "decrypt"],
   );
 }
 
-async function seedFromMnemonic(mnemonic: string) {
+async function seedFromMnemonic(mnemonic: string): Promise<Uint8Array> {
   return pbkdf2Async(sha256, mnemonic, "mnemonic", {
     c: 2048,
     dkLen: 32,
   });
 }
 
-export function verifyValidMnemonic(mnemonic: string) {
+export function verifyValidMnemonic(mnemonic: string): boolean {
   // First try to validate as BIP39 mnemonic
   if (validateMnemonic(mnemonic, wordlist)) {
     return true;
@@ -38,13 +67,11 @@ export function verifyValidMnemonic(mnemonic: string) {
 }
 
 export async function keysFromSeed(seed: Uint8Array): Promise<Keys> {
-  const { privateKey, publicKey } = forge.pki.ed25519.generateKeyPair({
-    seed,
-  });
+  const { secretKey, publicKey } = ed25519.keygen(seed);
 
   return {
-    privateKey: new Uint8Array(privateKey),
-    publicKey: new Uint8Array(publicKey),
+    privateKey: secretKey,
+    publicKey,
     seed,
   };
 }
@@ -63,23 +90,7 @@ export async function signCode(
   code: string,
   privateKey: Uint8Array,
 ): Promise<Uint8Array> {
-  const signature = forge.pki.ed25519.sign({
-    encoding: "utf8",
-    message: code,
-    privateKey: uint8ArrayToBuffer(privateKey),
-  });
-  return new Uint8Array(signature);
-}
-
-export function bytesToBase64(bytes: Uint8Array) {
-  return forge.util.encode64(String.fromCodePoint(...bytes));
-}
-
-export function bytesToBase64Url(bytes: Uint8Array): string {
-  return bytesToBase64(bytes)
-    .replace(/\//g, "_")
-    .replace(/\+/g, "-")
-    .replace(/=+$/, "");
+  return ed25519.sign(encoder.encode(code), privateKey);
 }
 
 export async function signChallenge(keys: Keys, challengeCode: string) {
@@ -87,70 +98,51 @@ export async function signChallenge(keys: Keys, challengeCode: string) {
   return bytesToBase64Url(signature);
 }
 
-export function base64ToBuffer(data: string) {
-  return forge.util.binary.base64.decode(data);
-}
-
-export function base64ToStringBuffer(data: string) {
-  const decoded = base64ToBuffer(data);
-
-  return uint8ArrayToBuffer(decoded);
-}
-
-export function stringBufferToBase64(buffer: forge.util.ByteStringBuffer) {
-  return forge.util.encode64(buffer.getBytes());
-}
-
 export async function encryptData(data: string, secret: Uint8Array) {
-  if (secret.byteLength !== 32)
+  if (secret.byteLength !== 32) {
     throw new Error("Secret must be at least 256-bit");
+  }
 
-  const iv = await new Promise<string>((resolve, reject) => {
-    forge.random.getBytes(16, (err, bytes) => {
-      if (err) reject(err);
-      resolve(bytes);
-    });
-  });
-
-  const cipher = forge.cipher.createCipher(
-    "AES-GCM",
-    uint8ArrayToBuffer(secret),
+  const iv = crypto.getRandomValues(new Uint8Array(16));
+  const key = await importAesKey(secret);
+  const ciphertext = new Uint8Array(
+    await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv: iv as BufferSource, tagLength: 128 },
+      key,
+      encoder.encode(data),
+    ),
   );
-  cipher.start({
-    iv,
-    tagLength: 128,
-  });
-  cipher.update(forge.util.createBuffer(data, "utf8"));
-  cipher.finish();
 
-  const encryptedData = cipher.output;
-  const tag = cipher.mode.tag;
+  const tag = ciphertext.slice(-16);
+  const encrypted = ciphertext.slice(0, -16);
 
-  return `${forge.util.encode64(iv)}.${stringBufferToBase64(
-    encryptedData,
-  )}.${stringBufferToBase64(tag)}` as const;
+  return `${bytesToBase64(iv)}.${bytesToBase64(encrypted)}.${bytesToBase64(
+    tag,
+  )}` as const;
 }
 
-export function decryptData(data: string, secret: Uint8Array) {
-  if (secret.byteLength !== 32) throw new Error("Secret must be 256-bit");
+export async function decryptData(data: string, secret: Uint8Array) {
+  if (secret.byteLength !== 32) {
+    throw new Error("Secret must be 256-bit");
+  }
 
-  const [iv, encryptedData, tag] = data.split(".");
+  const [ivB64, encryptedB64, tagB64] = data.split(".");
 
-  const decipher = forge.cipher.createDecipher(
-    "AES-GCM",
-    uint8ArrayToBuffer(secret),
+  const iv = base64ToBuffer(ivB64);
+  const encrypted = base64ToBuffer(encryptedB64);
+  const tag = base64ToBuffer(tagB64);
+  const ciphertext = new Uint8Array(encrypted.length + tag.length);
+  ciphertext.set(encrypted, 0);
+  ciphertext.set(tag, encrypted.length);
+
+  const key = await importAesKey(secret);
+  const decrypted = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: iv as BufferSource, tagLength: 128 },
+    key,
+    ciphertext as BufferSource,
   );
-  decipher.start({
-    iv: base64ToStringBuffer(iv),
-    tag: base64ToStringBuffer(tag),
-    tagLength: 128,
-  });
-  decipher.update(base64ToStringBuffer(encryptedData));
-  const pass = decipher.finish();
 
-  if (!pass) throw new Error("Error decrypting data");
-
-  return decipher.output.toString();
+  return decoder.decode(decrypted);
 }
 
 // Passkey/WebAuthn utilities

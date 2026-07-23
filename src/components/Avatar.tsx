@@ -1,10 +1,10 @@
 import classNames from "classnames";
 import { useMemo } from "react";
-import { useTranslation } from "react-i18next";
 
-import { base64ToBuffer, decryptData } from "@/backend/accounts/crypto";
+import { base64ToBuffer } from "@/backend/accounts/crypto";
 import { Icon, Icons } from "@/components/Icon";
 import { UserIcon } from "@/components/UserIcon";
+import { useDecryptedDeviceName } from "@/hooks/auth/useDecryptedDeviceName";
 import { AccountProfile } from "@/pages/parts/auth/AccountCreatePart";
 import { useAuthStore } from "@/stores/auth";
 
@@ -56,30 +56,15 @@ export function UserAvatar(props: {
         : null,
     [auth],
   );
-  const { t } = useTranslation();
+
+  const deviceName = useDecryptedDeviceName(
+    auth.account?.deviceName,
+    auth.account?.seed,
+  );
 
   if (!auth.account || auth.account === null) return null;
 
-  const deviceName = bufferSeed
-    ? (() => {
-        const parts = auth.account.deviceName?.split(".");
-        if (!parts || parts.length !== 3) {
-          return (
-            auth.account.deviceName ||
-            t("settings.account.devices.unknownDevice")
-          );
-        }
-        try {
-          return decryptData(auth.account.deviceName, bufferSeed);
-        } catch (error) {
-          console.warn(
-            "Failed to decrypt device name in Avatar, using fallback:",
-            error,
-          );
-          return t("settings.account.devices.unknownDevice");
-        }
-      })()
-    : "...";
+  const displayName = bufferSeed ? deviceName : "...";
 
   return (
     <>
@@ -93,9 +78,9 @@ export function UserAvatar(props: {
       />
       {props.withName && bufferSeed ? (
         <span className="hidden md:inline-block">
-          {deviceName.length >= 20
-            ? `${deviceName.slice(0, 20 - 1)}…`
-            : deviceName}
+          {displayName.length >= 20
+            ? `${displayName.slice(0, 20 - 1)}…`
+            : displayName}
         </span>
       ) : null}
     </>
