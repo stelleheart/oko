@@ -10,162 +10,176 @@ import { getProxyUrls } from "@/utils/proxyUrls";
 
 import { MWMediaMeta, MWMediaType, MWSeasonMeta } from "./types/mw";
 import {
-  ExternalIdMovieSearchResult,
-  TMDBContentTypes,
-  TMDBCredits,
-  TMDBEpisode,
-  TMDBEpisodeShort,
-  TMDBMediaResult,
-  TMDBMovieData,
-  TMDBMovieSearchResult,
-  TMDBPerson,
-  TMDBPersonImages,
-  TMDBSearchResult,
-  TMDBSeason,
-  TMDBSeasonMetaResult,
-  TMDBShowData,
-  TMDBShowSearchResult,
-  TMDBVideo,
-  TMDBVideosResponse,
+	ExternalIdMovieSearchResult,
+	TMDBContentTypes,
+	TMDBCredits,
+	TMDBEpisode,
+	TMDBEpisodeShort,
+	TMDBMediaResult,
+	TMDBMovieData,
+	TMDBMovieSearchResult,
+	TMDBPerson,
+	TMDBPersonImages,
+	TMDBSearchResult,
+	TMDBSeason,
+	TMDBSeasonMetaResult,
+	TMDBShowData,
+	TMDBShowSearchResult,
+	TMDBVideo,
+	TMDBVideosResponse,
 } from "./types/tmdb";
 import { mwFetch } from "../helpers/fetch";
 
-export function mediaTypeToTMDB(type: MWMediaType): TMDBContentTypes {
-  if (type === MWMediaType.MOVIE) return TMDBContentTypes.MOVIE;
-  if (type === MWMediaType.SERIES) return TMDBContentTypes.TV;
-  throw new Error("unsupported type");
-}
+// Mapping tables between MWMediaType / TMDBContentTypes / MediaItem["type"].
+// Unknown inputs throw to preserve the original throw-based contract.
+const MW_TO_TMDB: Partial<Record<MWMediaType, TMDBContentTypes>> = {
+	[MWMediaType.MOVIE]: TMDBContentTypes.MOVIE,
+	[MWMediaType.SERIES]: TMDBContentTypes.TV,
+};
+const MEDIA_ITEM_TO_MW: Partial<Record<MediaItem["type"], MWMediaType>> = {
+	movie: MWMediaType.MOVIE,
+	show: MWMediaType.SERIES,
+};
+const TMDB_TO_MW: Partial<Record<TMDBContentTypes, MWMediaType>> = {
+	[TMDBContentTypes.MOVIE]: MWMediaType.MOVIE,
+	[TMDBContentTypes.TV]: MWMediaType.SERIES,
+};
+const TMDB_TO_MEDIA_ITEM: Partial<Record<TMDBContentTypes, MediaItem["type"]>> =
+	{
+		[TMDBContentTypes.MOVIE]: "movie",
+		[TMDBContentTypes.TV]: "show",
+	};
 
-export function mediaItemTypeToMediaType(type: MediaItem["type"]): MWMediaType {
-  if (type === "movie") return MWMediaType.MOVIE;
-  if (type === "show") return MWMediaType.SERIES;
-  throw new Error("unsupported type");
-}
+const pick = <T>(map: Partial<Record<string, T>>, key: string): T => {
+	const value = map[key];
+	if (value === undefined) throw new Error("unsupported type");
+	return value;
+};
 
-export function TMDBMediaToMediaType(type: TMDBContentTypes): MWMediaType {
-  if (type === TMDBContentTypes.MOVIE) return MWMediaType.MOVIE;
-  if (type === TMDBContentTypes.TV) return MWMediaType.SERIES;
-  throw new Error("unsupported type");
-}
+export const mediaTypeToTMDB = (type: MWMediaType): TMDBContentTypes =>
+	pick(MW_TO_TMDB, type);
 
-export function TMDBMediaToMediaItemType(
-  type: TMDBContentTypes,
-): MediaItem["type"] {
-  if (type === TMDBContentTypes.MOVIE) return "movie";
-  if (type === TMDBContentTypes.TV) return "show";
-  throw new Error("unsupported type");
-}
+export const mediaItemTypeToMediaType = (
+	type: MediaItem["type"],
+): MWMediaType => pick(MEDIA_ITEM_TO_MW, type);
+
+export const TMDBMediaToMediaType = (type: TMDBContentTypes): MWMediaType =>
+	pick(TMDB_TO_MW, type);
+
+export const TMDBMediaToMediaItemType = (
+	type: TMDBContentTypes,
+): MediaItem["type"] => pick(TMDB_TO_MEDIA_ITEM, type);
 
 export function formatTMDBEpisode(v: TMDBEpisodeShort): {
-  id: string;
-  number: number;
-  title: string;
-  air_date: string;
-  still_path: string | null;
-  overview: string;
+	id: string;
+	number: number;
+	title: string;
+	air_date: string;
+	still_path: string | null;
+	overview: string;
 } {
-  return {
-    id: v.id.toString(),
-    number: v.episode_number,
-    title: v.title,
-    air_date: v.air_date,
-    still_path: v.still_path,
-    overview: v.overview,
-  };
+	return {
+		id: v.id.toString(),
+		number: v.episode_number,
+		title: v.title,
+		air_date: v.air_date,
+		still_path: v.still_path,
+		overview: v.overview,
+	};
 }
 
 export function formatTMDBMeta(
-  media: TMDBMediaResult,
-  season?: TMDBSeasonMetaResult,
+	media: TMDBMediaResult,
+	season?: TMDBSeasonMetaResult,
 ): MWMediaMeta {
-  const type = TMDBMediaToMediaType(media.object_type);
-  let seasons: undefined | MWSeasonMeta[];
-  if (type === MWMediaType.SERIES) {
-    seasons = media.seasons
-      ?.sort((a, b) => a.season_number - b.season_number)
-      .map(
-        (v): MWSeasonMeta => ({
-          title: v.title,
-          id: v.id.toString(),
-          number: v.season_number,
-        }),
-      );
-  }
+	const type = TMDBMediaToMediaType(media.object_type);
+	let seasons: undefined | MWSeasonMeta[];
+	if (type === MWMediaType.SERIES) {
+		seasons = media.seasons
+			?.sort((a, b) => a.season_number - b.season_number)
+			.map(
+				(v): MWSeasonMeta => ({
+					title: v.title,
+					id: v.id.toString(),
+					number: v.season_number,
+				}),
+			);
+	}
 
-  return {
-    title: media.title,
-    id: media.id.toString(),
-    year: media.original_release_date?.getFullYear()?.toString(),
-    poster: media.poster,
-    type,
-    overview: media.overview,
-    seasons: seasons as any,
-    seasonData: season
-      ? {
-          id: season.id.toString(),
-          number: season.season_number,
-          title: season.title,
-          episodes: season.episodes
-            .sort((a, b) => a.episode_number - b.episode_number)
-            .map(formatTMDBEpisode),
-        }
-      : (undefined as any),
-  };
+	return {
+		title: media.title,
+		id: media.id.toString(),
+		year: media.original_release_date?.getFullYear()?.toString(),
+		poster: media.poster,
+		type,
+		overview: media.overview,
+		seasons: seasons as any,
+		seasonData: season
+			? {
+					id: season.id.toString(),
+					number: season.season_number,
+					title: season.title,
+					episodes: season.episodes
+						.sort((a, b) => a.episode_number - b.episode_number)
+						.map(formatTMDBEpisode),
+				}
+			: (undefined as any),
+	};
 }
 
 export function formatTMDBMetaToMediaItem(media: TMDBMediaResult): MediaItem {
-  const type = TMDBMediaToMediaItemType(media.object_type);
+	const type = TMDBMediaToMediaItemType(media.object_type);
 
-  return {
-    title: media.title,
-    id: media.id.toString(),
-    year: media.original_release_date?.getFullYear() ?? 0,
-    release_date: media.original_release_date,
-    poster: media.poster,
-    type,
-  };
+	return {
+		title: media.title,
+		id: media.id.toString(),
+		year: media.original_release_date?.getFullYear() ?? 0,
+		release_date: media.original_release_date,
+		poster: media.poster,
+		type,
+	};
 }
 
 export function TMDBIdToUrlId(
-  type: MWMediaType,
-  tmdbId: string,
-  title: string,
+	type: MWMediaType,
+	tmdbId: string,
+	title: string,
 ) {
-  return [
-    "tmdb",
-    mediaTypeToTMDB(type),
-    tmdbId,
-    slugify(title, { lower: true, strict: true }),
-  ].join("-");
+	return [
+		"tmdb",
+		mediaTypeToTMDB(type),
+		tmdbId,
+		slugify(title, { lower: true, strict: true }),
+	].join("-");
 }
 
 export function TMDBMediaToId(media: MWMediaMeta): string {
-  return TMDBIdToUrlId(media.type, media.id, media.title);
+	return TMDBIdToUrlId(media.type, media.id, media.title);
 }
 
 export function mediaItemToId(media: MediaItem): string {
-  return TMDBIdToUrlId(
-    mediaItemTypeToMediaType(media.type),
-    media.id,
-    media.title,
-  );
+	return TMDBIdToUrlId(
+		mediaItemTypeToMediaType(media.type),
+		media.id,
+		media.title,
+	);
 }
 
 export function decodeTMDBId(
-  paramId: string,
+	paramId: string,
 ): { id: string; type: MWMediaType } | null {
-  const [prefix, type, id] = paramId.split("-", 3);
-  if (prefix !== "tmdb") return null;
-  let mediaType;
-  try {
-    mediaType = TMDBMediaToMediaType(type as TMDBContentTypes);
-  } catch {
-    return null;
-  }
-  return {
-    type: mediaType,
-    id,
-  };
+	const [prefix, type, id] = paramId.split("-", 3);
+	if (prefix !== "tmdb") return null;
+	let mediaType;
+	try {
+		mediaType = TMDBMediaToMediaType(type as TMDBContentTypes);
+	} catch {
+		return null;
+	}
+	return {
+		type: mediaType,
+		id,
+	};
 }
 
 const tmdbBaseUrl1 = "https://api.themoviedb.org/3/";
@@ -173,329 +187,329 @@ const tmdbBaseUrl2 = "https://api.tmdb.org/3/";
 
 // v4 read tokens are JWTs (3 dot-separated base64 segments), v3 keys are short alphanumeric strings
 function isV4Token(key: string): boolean {
-  return key.split(".").length === 3;
+	return key.split(".").length === 3;
 }
 
 // Cache for TMDB API responses
 interface TMDBCacheKey {
-  url: string;
-  params: object;
-  language: string;
+	url: string;
+	params: object;
+	language: string;
 }
 
 const tmdbCache = new SimpleCache<TMDBCacheKey, any>();
 tmdbCache.setCompare((a, b) => {
-  return (
-    a.url === b.url &&
-    JSON.stringify(a.params) === JSON.stringify(b.params) &&
-    a.language === b.language
-  );
+	return (
+		a.url === b.url &&
+		JSON.stringify(a.params) === JSON.stringify(b.params) &&
+		a.language === b.language
+	);
 });
 tmdbCache.initialize();
 
 function abortOnTimeout(timeout: number): AbortSignal {
-  const controller = new AbortController();
-  setTimeout(() => controller.abort(), timeout);
-  return controller.signal;
+	const controller = new AbortController();
+	setTimeout(() => controller.abort(), timeout);
+	return controller.signal;
 }
 
 let proxyRotationIndex = 0;
 
 function getNextProxy(proxyUrls: string[]): string | undefined {
-  if (!proxyUrls.length) return undefined;
-  const proxy = proxyUrls[proxyRotationIndex % proxyUrls.length];
-  proxyRotationIndex += 1;
-  return proxy;
+	if (!proxyUrls.length) return undefined;
+	const proxy = proxyUrls[proxyRotationIndex % proxyUrls.length];
+	proxyRotationIndex += 1;
+	return proxy;
 }
 
 export async function get<T>(url: string, params?: object): Promise<T> {
-  const proxyUrls = getProxyUrls();
-  const proxy = getNextProxy(proxyUrls);
-  const shouldProxyTmdb = usePreferencesStore.getState().proxyTmdb;
-  const userLanguage = useLanguageStore.getState().language;
-  const formattedLanguage = getTmdbLanguageCode(userLanguage);
+	const proxyUrls = getProxyUrls();
+	const proxy = getNextProxy(proxyUrls);
+	const shouldProxyTmdb = usePreferencesStore.getState().proxyTmdb;
+	const userLanguage = useLanguageStore.getState().language;
+	const formattedLanguage = getTmdbLanguageCode(userLanguage);
 
-  const apiKey = conf().TMDB_READ_API_KEY;
-  if (!apiKey) throw new Error("TMDB API key not set");
+	const apiKey = conf().TMDB_READ_API_KEY;
+	if (!apiKey) throw new Error("TMDB API key not set");
 
-  const tmdbHeaders: Record<string, string> = { accept: "application/json" };
-  if (isV4Token(apiKey)) {
-    tmdbHeaders.Authorization = `Bearer ${apiKey}`;
-  }
+	const tmdbHeaders: Record<string, string> = { accept: "application/json" };
+	if (isV4Token(apiKey)) {
+		tmdbHeaders.Authorization = `Bearer ${apiKey}`;
+	}
 
-  // Check cache first
-  const cacheKey: TMDBCacheKey = {
-    url,
-    params: params || {},
-    language: formattedLanguage,
-  };
+	// Check cache first
+	const cacheKey: TMDBCacheKey = {
+		url,
+		params: params || {},
+		language: formattedLanguage,
+	};
 
-  const cachedResult = tmdbCache.get(cacheKey);
-  if (cachedResult) {
-    return cachedResult as T;
-  }
+	const cachedResult = tmdbCache.get(cacheKey);
+	if (cachedResult) {
+		return cachedResult as T;
+	}
 
-  // directly writing parameters, otherwise it will start the first parameter in the proxied request as "&" instead of "?" because it doesnt understand its proxied
-  const fullUrl = new URL(tmdbBaseUrl1 + url);
-  const allParams = {
-    ...params,
-    language: formattedLanguage,
-    ...(!isV4Token(apiKey) ? { api_key: apiKey } : {}),
-  };
+	// directly writing parameters, otherwise it will start the first parameter in the proxied request as "&" instead of "?" because it doesnt understand its proxied
+	const fullUrl = new URL(tmdbBaseUrl1 + url);
+	const allParams = {
+		...params,
+		language: formattedLanguage,
+		...(!isV4Token(apiKey) ? { api_key: apiKey } : {}),
+	};
 
-  if (allParams) {
-    Object.entries(allParams).forEach(([key, value]) => {
-      fullUrl.searchParams.append(key, String(value));
-    });
-  }
+	if (allParams) {
+		Object.entries(allParams).forEach(([key, value]) => {
+			fullUrl.searchParams.append(key, String(value));
+		});
+	}
 
-  let result: T;
+	let result: T;
 
-  if (proxy && shouldProxyTmdb) {
-    try {
-      result = await mwFetch<T>(
-        `/?destination=${encodeURIComponent(fullUrl.toString())}`,
-        {
-          headers: tmdbHeaders,
-          baseURL: proxy,
-          signal: abortOnTimeout(5000),
-        },
-      );
-    } catch (err) {
-      console.error(err);
-      // Fall through to try direct connection
-    }
-  }
+	if (proxy && shouldProxyTmdb) {
+		try {
+			result = await mwFetch<T>(
+				`/?destination=${encodeURIComponent(fullUrl.toString())}`,
+				{
+					headers: tmdbHeaders,
+					baseURL: proxy,
+					signal: abortOnTimeout(5000),
+				},
+			);
+		} catch (err) {
+			console.error(err);
+			// Fall through to try direct connection
+		}
+	}
 
-  if (!result!) {
-    try {
-      result = await mwFetch<T>(encodeURI(url), {
-        headers: tmdbHeaders,
-        baseURL: tmdbBaseUrl1,
-        params: allParams,
-        signal: abortOnTimeout(5000),
-      });
-    } catch (err) {
-      result = await mwFetch<T>(encodeURI(url), {
-        headers: tmdbHeaders,
-        baseURL: tmdbBaseUrl2,
-        params: allParams,
-        signal: abortOnTimeout(30000),
-      });
-    }
-  }
+	if (!result!) {
+		try {
+			result = await mwFetch<T>(encodeURI(url), {
+				headers: tmdbHeaders,
+				baseURL: tmdbBaseUrl1,
+				params: allParams,
+				signal: abortOnTimeout(5000),
+			});
+		} catch (err) {
+			result = await mwFetch<T>(encodeURI(url), {
+				headers: tmdbHeaders,
+				baseURL: tmdbBaseUrl2,
+				params: allParams,
+				signal: abortOnTimeout(30000),
+			});
+		}
+	}
 
-  // Cache the result for 1 hour (3600 seconds)
-  tmdbCache.set(cacheKey, result, 3600);
-  return result;
+	// Cache the result for 1 hour (3600 seconds)
+	tmdbCache.set(cacheKey, result, 3600);
+	return result;
 }
 
 export async function multiSearch(
-  query: string,
+	query: string,
 ): Promise<(TMDBMovieSearchResult | TMDBShowSearchResult)[]> {
-  const data = await get<TMDBSearchResult>("search/multi", {
-    query,
-    include_adult: false,
-    page: 1,
-  });
-  // filter out results that aren't movies or shows
-  const results = data.results.filter(
-    (r) =>
-      r.media_type === TMDBContentTypes.MOVIE ||
-      r.media_type === TMDBContentTypes.TV,
-  );
-  return results;
+	const data = await get<TMDBSearchResult>("search/multi", {
+		query,
+		include_adult: false,
+		page: 1,
+	});
+	// filter out results that aren't movies or shows
+	const results = data.results.filter(
+		(r) =>
+			r.media_type === TMDBContentTypes.MOVIE ||
+			r.media_type === TMDBContentTypes.TV,
+	);
+	return results;
 }
 
 export async function searchMovies(
-  query: string,
+	query: string,
 ): Promise<TMDBMovieSearchResult[]> {
-  const data = await get<{
-    results: TMDBMovieSearchResult[];
-  }>("search/movie", {
-    query,
-    include_adult: false,
-    page: 1,
-  });
-  return data.results.map((result) => ({
-    ...result,
-    media_type: TMDBContentTypes.MOVIE,
-  }));
+	const data = await get<{
+		results: TMDBMovieSearchResult[];
+	}>("search/movie", {
+		query,
+		include_adult: false,
+		page: 1,
+	});
+	return data.results.map((result) => ({
+		...result,
+		media_type: TMDBContentTypes.MOVIE,
+	}));
 }
 
 export async function searchTVShows(
-  query: string,
+	query: string,
 ): Promise<TMDBShowSearchResult[]> {
-  const data = await get<{
-    results: TMDBShowSearchResult[];
-  }>("search/tv", {
-    query,
-    include_adult: false,
-    page: 1,
-  });
-  return data.results.map((result) => ({
-    ...result,
-    media_type: TMDBContentTypes.TV,
-  }));
+	const data = await get<{
+		results: TMDBShowSearchResult[];
+	}>("search/tv", {
+		query,
+		include_adult: false,
+		page: 1,
+	});
+	return data.results.map((result) => ({
+		...result,
+		media_type: TMDBContentTypes.TV,
+	}));
 }
 
 export async function generateQuickSearchMediaUrl(
-  query: string,
+	query: string,
 ): Promise<string | undefined> {
-  const data = await multiSearch(query);
-  if (data.length === 0) return undefined;
-  const result = data[0];
-  const title =
-    result.media_type === TMDBContentTypes.MOVIE ? result.title : result.name;
+	const data = await multiSearch(query);
+	if (data.length === 0) return undefined;
+	const result = data[0];
+	const title =
+		result.media_type === TMDBContentTypes.MOVIE ? result.title : result.name;
 
-  return `/media/${TMDBIdToUrlId(
-    TMDBMediaToMediaType(result.media_type),
-    result.id.toString(),
-    title,
-  )}`;
+	return `/media/${TMDBIdToUrlId(
+		TMDBMediaToMediaType(result.media_type),
+		result.id.toString(),
+		title,
+	)}`;
 }
 
 // Conditional type which for inferring the return type based on the content type
 type MediaDetailReturn<T extends TMDBContentTypes> =
-  T extends TMDBContentTypes.MOVIE
-    ? TMDBMovieData
-    : T extends TMDBContentTypes.TV
-      ? TMDBShowData
-      : never;
+	T extends TMDBContentTypes.MOVIE
+		? TMDBMovieData
+		: T extends TMDBContentTypes.TV
+			? TMDBShowData
+			: never;
 
 export async function getEpisodeDetails(
-  showId: string,
-  seasonNumber: number,
-  episodeNumber: number,
+	showId: string,
+	seasonNumber: number,
+	episodeNumber: number,
 ): Promise<{ vote_average: number } | null> {
-  try {
-    const data = await get<TMDBEpisode>(
-      `/tv/${showId}/season/${seasonNumber}/episode/${episodeNumber}`,
-    );
-    return {
-      vote_average:
-        typeof data.vote_average === "number" ? data.vote_average : 0,
-    };
-  } catch {
-    return null;
-  }
+	try {
+		const data = await get<TMDBEpisode>(
+			`/tv/${showId}/season/${seasonNumber}/episode/${episodeNumber}`,
+		);
+		return {
+			vote_average:
+				typeof data.vote_average === "number" ? data.vote_average : 0,
+		};
+	} catch {
+		return null;
+	}
 }
 
 export async function getSeasonDetails(
-  id: string,
-  season: number,
+	id: string,
+	season: number,
 ): Promise<
-  Array<{
-    id: number;
-    name: string;
-    episode_number: number;
-    overview: string;
-    still_path: string | null;
-    air_date: string;
-    season_number: number;
-  }>
+	Array<{
+		id: number;
+		name: string;
+		episode_number: number;
+		overview: string;
+		still_path: string | null;
+		air_date: string;
+		season_number: number;
+	}>
 > {
-  const seasonData = await get<TMDBSeason>(`/tv/${id}/season/${season}`);
-  return seasonData.episodes.map((episode) => ({
-    id: episode.id,
-    name: episode.name,
-    episode_number: episode.episode_number,
-    overview: episode.overview,
-    still_path: episode.still_path,
-    air_date: episode.air_date,
-    season_number: season,
-  }));
+	const seasonData = await get<TMDBSeason>(`/tv/${id}/season/${season}`);
+	return seasonData.episodes.map((episode) => ({
+		id: episode.id,
+		name: episode.name,
+		episode_number: episode.episode_number,
+		overview: episode.overview,
+		still_path: episode.still_path,
+		air_date: episode.air_date,
+		season_number: season,
+	}));
 }
 
 export async function getMediaDetails<
-  T extends TMDBContentTypes,
-  TReturn = MediaDetailReturn<T>,
+	T extends TMDBContentTypes,
+	TReturn = MediaDetailReturn<T>,
 >(id: string, type: T, fetchEpisodes: boolean = true): Promise<TReturn> {
-  if (type === TMDBContentTypes.MOVIE) {
-    return get<TReturn>(`/movie/${id}`, {
-      append_to_response: "external_ids,credits,release_dates",
-    });
-  }
-  if (type === TMDBContentTypes.TV) {
-    const showData = await get<TReturn>(`/tv/${id}`, {
-      append_to_response: "external_ids,credits,content_ratings",
-    });
+	if (type === TMDBContentTypes.MOVIE) {
+		return get<TReturn>(`/movie/${id}`, {
+			append_to_response: "external_ids,credits,release_dates",
+		});
+	}
+	if (type === TMDBContentTypes.TV) {
+		const showData = await get<TReturn>(`/tv/${id}`, {
+			append_to_response: "external_ids,credits,content_ratings",
+		});
 
-    if (!fetchEpisodes) {
-      return {
-        ...showData,
-        episodes: [],
-      } as TReturn;
-    }
+		if (!fetchEpisodes) {
+			return {
+				...showData,
+				episodes: [],
+			} as TReturn;
+		}
 
-    // Fetch episodes for each season
-    const showDetails = showData as TMDBShowData;
-    const allEpisodesBySeason = new Array(showDetails.seasons.length);
-    const seasonsQueue = showDetails.seasons.map((season, index) => ({
-      season,
-      index,
-    }));
-    const concurrencyLimit = 5;
+		// Fetch episodes for each season
+		const showDetails = showData as TMDBShowData;
+		const allEpisodesBySeason = new Array(showDetails.seasons.length);
+		const seasonsQueue = showDetails.seasons.map((season, index) => ({
+			season,
+			index,
+		}));
+		const concurrencyLimit = 5;
 
-    const workers = Array.from(
-      { length: Math.min(concurrencyLimit, seasonsQueue.length) },
-      async () => {
-        while (seasonsQueue.length > 0) {
-          const item = seasonsQueue.shift();
-          if (!item) break;
-          const { season, index } = item;
-          const seasonData = await get<TMDBSeason>(
-            `/tv/${id}/season/${season.season_number}`,
-          );
-          allEpisodesBySeason[index] = seasonData.episodes.map((episode) => ({
-            id: episode.id,
-            name: episode.name,
-            episode_number: episode.episode_number,
-            overview: episode.overview,
-            still_path: episode.still_path,
-            air_date: episode.air_date,
-            season_number: season.season_number,
-          }));
-        }
-      },
-    );
+		const workers = Array.from(
+			{ length: Math.min(concurrencyLimit, seasonsQueue.length) },
+			async () => {
+				while (seasonsQueue.length > 0) {
+					const item = seasonsQueue.shift();
+					if (!item) break;
+					const { season, index } = item;
+					const seasonData = await get<TMDBSeason>(
+						`/tv/${id}/season/${season.season_number}`,
+					);
+					allEpisodesBySeason[index] = seasonData.episodes.map((episode) => ({
+						id: episode.id,
+						name: episode.name,
+						episode_number: episode.episode_number,
+						overview: episode.overview,
+						still_path: episode.still_path,
+						air_date: episode.air_date,
+						season_number: season.season_number,
+					}));
+				}
+			},
+		);
 
-    await Promise.all(workers);
-    const allEpisodes = allEpisodesBySeason.flat();
+		await Promise.all(workers);
+		const allEpisodes = allEpisodesBySeason.flat();
 
-    return {
-      ...showData,
-      episodes: allEpisodes,
-    } as TReturn;
-  }
-  throw new Error("Invalid media type");
+		return {
+			...showData,
+			episodes: allEpisodes,
+		} as TReturn;
+	}
+	throw new Error("Invalid media type");
 }
 
 export function getMediaBackdrop(
-  backdropPath: string | null,
+	backdropPath: string | null,
 ): string | undefined {
-  const shouldProxyTmdb = usePreferencesStore.getState().proxyTmdb;
-  const imgUrl = `https://image.tmdb.org/t/p/original${backdropPath}`;
-  const proxyUrl = getProxyUrls()[0];
-  if (proxyUrl && shouldProxyTmdb) {
-    return `${proxyUrl}/?destination=${imgUrl}`;
-  }
-  if (backdropPath) return imgUrl;
+	const shouldProxyTmdb = usePreferencesStore.getState().proxyTmdb;
+	const imgUrl = `https://image.tmdb.org/t/p/original${backdropPath}`;
+	const proxyUrl = getProxyUrls()[0];
+	if (proxyUrl && shouldProxyTmdb) {
+		return `${proxyUrl}/?destination=${imgUrl}`;
+	}
+	if (backdropPath) return imgUrl;
 }
 
 export function getMediaPoster(posterPath: string | null): string | undefined {
-  const shouldProxyTmdb = usePreferencesStore.getState().proxyTmdb;
-  const imgUrl = `https://image.tmdb.org/t/p/w342/${posterPath}`;
+	const shouldProxyTmdb = usePreferencesStore.getState().proxyTmdb;
+	const imgUrl = `https://image.tmdb.org/t/p/w342/${posterPath}`;
 
-  if (shouldProxyTmdb) {
-    const proxyUrls = getProxyUrls();
-    const proxy = getNextProxy(proxyUrls);
-    if (proxy) {
-      return `${proxy}/?destination=${imgUrl}`;
-    }
-  }
+	if (shouldProxyTmdb) {
+		const proxyUrls = getProxyUrls();
+		const proxy = getNextProxy(proxyUrls);
+		if (proxy) {
+			return `${proxy}/?destination=${imgUrl}`;
+		}
+	}
 
-  if (posterPath) return imgUrl;
+	if (posterPath) return imgUrl;
 }
 
 /**
@@ -503,38 +517,38 @@ export function getMediaPoster(posterPath: string | null): string | undefined {
  * Use this when importing from external sources (e.g. Trakt) that may not have poster URLs.
  */
 export async function getPosterForMedia(
-  tmdbId: string,
-  type: "movie" | "show",
+	tmdbId: string,
+	type: "movie" | "show",
 ): Promise<string | undefined> {
-  try {
-    const tmdbType =
-      type === "movie" ? TMDBContentTypes.MOVIE : TMDBContentTypes.TV;
-    const details = await getMediaDetails(tmdbId, tmdbType, false);
-    const posterPath =
-      (details as TMDBMovieData | TMDBShowData).poster_path ?? null;
-    return getMediaPoster(posterPath);
-  } catch {
-    return undefined;
-  }
+	try {
+		const tmdbType =
+			type === "movie" ? TMDBContentTypes.MOVIE : TMDBContentTypes.TV;
+		const details = await getMediaDetails(tmdbId, tmdbType, false);
+		const posterPath =
+			(details as TMDBMovieData | TMDBShowData).poster_path ?? null;
+		return getMediaPoster(posterPath);
+	} catch {
+		return undefined;
+	}
 }
 
 export async function getCollectionDetails(collectionId: number): Promise<any> {
-  return get<any>(`/collection/${collectionId}`);
+	return get<any>(`/collection/${collectionId}`);
 }
 
 export async function getEpisodes(
-  id: string,
-  season: number,
+	id: string,
+	season: number,
 ): Promise<TMDBEpisodeShort[]> {
-  const data = await get<TMDBSeason>(`/tv/${id}/season/${season}`);
-  return data.episodes.map((e) => ({
-    id: e.id,
-    episode_number: e.episode_number,
-    title: e.name,
-    air_date: e.air_date,
-    still_path: e.still_path,
-    overview: e.overview,
-  }));
+	const data = await get<TMDBSeason>(`/tv/${id}/season/${season}`);
+	return data.episodes.map((e) => ({
+		id: e.id,
+		episode_number: e.episode_number,
+		title: e.name,
+		air_date: e.air_date,
+		still_path: e.still_path,
+		overview: e.overview,
+	}));
 }
 
 /**
@@ -542,119 +556,119 @@ export async function getEpisodes(
  * (e.g. Trakt) only provide season/episode numbers.
  */
 export async function getEpisodeIds(
-  showTmdbId: string,
-  seasonNumber: number,
-  episodeNumber: number,
+	showTmdbId: string,
+	seasonNumber: number,
+	episodeNumber: number,
 ): Promise<{ seasonId: string; episodeId: string } | null> {
-  try {
-    const data = await get<TMDBSeason>(
-      `/tv/${showTmdbId}/season/${seasonNumber}`,
-    );
-    const episode = data.episodes.find(
-      (e) => e.episode_number === episodeNumber,
-    );
-    if (!episode) return null;
-    return {
-      seasonId: data.id.toString(),
-      episodeId: episode.id.toString(),
-    };
-  } catch {
-    return null;
-  }
+	try {
+		const data = await get<TMDBSeason>(
+			`/tv/${showTmdbId}/season/${seasonNumber}`,
+		);
+		const episode = data.episodes.find(
+			(e) => e.episode_number === episodeNumber,
+		);
+		if (!episode) return null;
+		return {
+			seasonId: data.id.toString(),
+			episodeId: episode.id.toString(),
+		};
+	} catch {
+		return null;
+	}
 }
 
 export async function getMovieFromExternalId(
-  imdbId: string,
+	imdbId: string,
 ): Promise<string | undefined> {
-  const data = await get<ExternalIdMovieSearchResult>(`/find/${imdbId}`, {
-    external_source: "imdb_id",
-  });
+	const data = await get<ExternalIdMovieSearchResult>(`/find/${imdbId}`, {
+		external_source: "imdb_id",
+	});
 
-  const movie = data.movie_results[0];
-  if (!movie) return undefined;
+	const movie = data.movie_results[0];
+	if (!movie) return undefined;
 
-  return movie.id.toString();
+	return movie.id.toString();
 }
 
 export function formatTMDBSearchResult(
-  result: TMDBMovieSearchResult | TMDBShowSearchResult,
-  mediatype: TMDBContentTypes,
+	result: TMDBMovieSearchResult | TMDBShowSearchResult,
+	mediatype: TMDBContentTypes,
 ): TMDBMediaResult {
-  const type = TMDBMediaToMediaType(mediatype);
-  if (type === MWMediaType.SERIES) {
-    const show = result as TMDBShowSearchResult;
-    return {
-      title: show.name,
-      poster: getMediaPoster(show.poster_path),
-      id: show.id,
-      original_release_date: new Date(show.first_air_date),
-      object_type: mediatype,
-    };
-  }
+	const type = TMDBMediaToMediaType(mediatype);
+	if (type === MWMediaType.SERIES) {
+		const show = result as TMDBShowSearchResult;
+		return {
+			title: show.name,
+			poster: getMediaPoster(show.poster_path),
+			id: show.id,
+			original_release_date: new Date(show.first_air_date),
+			object_type: mediatype,
+		};
+	}
 
-  const movie = result as TMDBMovieSearchResult;
+	const movie = result as TMDBMovieSearchResult;
 
-  return {
-    title: movie.title,
-    poster: getMediaPoster(movie.poster_path),
-    id: movie.id,
-    original_release_date: new Date(movie.release_date),
-    object_type: mediatype,
-  };
+	return {
+		title: movie.title,
+		poster: getMediaPoster(movie.poster_path),
+		id: movie.id,
+		original_release_date: new Date(movie.release_date),
+		object_type: mediatype,
+	};
 }
 
 /**
  * Fetches the clear logo for a movie or show from TMDB images endpoint.
  */
 export async function getMediaLogo(
-  id: string,
-  type: TMDBContentTypes,
-  language?: string,
+	id: string,
+	type: TMDBContentTypes,
+	language?: string,
 ): Promise<string | undefined> {
-  const userLanguage = language || useLanguageStore.getState().language;
-  const formattedLanguage = getTmdbLanguageCode(userLanguage);
-  const url =
-    type === TMDBContentTypes.MOVIE
-      ? `/movie/${id}/images`
-      : `/tv/${id}/images`;
-  try {
-    const data = await get<any>(url, {
-      include_image_language: `${formattedLanguage},en,null`,
-    });
-    // Try to find a logo in the user's language, then English, then any
-    const logo =
-      data.logos?.find((l: any) => l.iso_639_1 === formattedLanguage) ||
-      data.logos?.find((l: any) => l.iso_639_1 === "en") ||
-      data.logos?.[0];
-    if (logo && logo.file_path) {
-      return `https://image.tmdb.org/t/p/original${logo.file_path}`;
-    }
-    return undefined;
-  } catch (err) {
-    console.error("Failed to fetch TMDB logo:", err);
-    return undefined;
-  }
+	const userLanguage = language || useLanguageStore.getState().language;
+	const formattedLanguage = getTmdbLanguageCode(userLanguage);
+	const url =
+		type === TMDBContentTypes.MOVIE
+			? `/movie/${id}/images`
+			: `/tv/${id}/images`;
+	try {
+		const data = await get<any>(url, {
+			include_image_language: `${formattedLanguage},en,null`,
+		});
+		// Try to find a logo in the user's language, then English, then any
+		const logo =
+			data.logos?.find((l: any) => l.iso_639_1 === formattedLanguage) ||
+			data.logos?.find((l: any) => l.iso_639_1 === "en") ||
+			data.logos?.[0];
+		if (logo && logo.file_path) {
+			return `https://image.tmdb.org/t/p/original${logo.file_path}`;
+		}
+		return undefined;
+	} catch (err) {
+		console.error("Failed to fetch TMDB logo:", err);
+		return undefined;
+	}
 }
 
 export async function getMediaCredits(
-  id: string,
-  type: TMDBContentTypes,
+	id: string,
+	type: TMDBContentTypes,
 ): Promise<TMDBCredits> {
-  const endpoint = type === TMDBContentTypes.MOVIE ? "movie" : "tv";
-  return get<TMDBCredits>(`/${endpoint}/${id}/credits`);
+	const endpoint = type === TMDBContentTypes.MOVIE ? "movie" : "tv";
+	return get<TMDBCredits>(`/${endpoint}/${id}/credits`);
 }
 
 export async function getMediaVideos(
-  id: string,
-  type: TMDBContentTypes,
+	id: string,
+	type: TMDBContentTypes,
 ): Promise<TMDBVideo[]> {
-  const endpoint = type === TMDBContentTypes.MOVIE ? "movie" : "tv";
-  const data = await get<TMDBVideosResponse>(`/${endpoint}/${id}/videos`);
-  return data.results.filter(
-    (video) =>
-      video.site === "YouTube" &&
-      (video.type === "Trailer" || video.type === "Teaser"),
-  );
+	const endpoint = type === TMDBContentTypes.MOVIE ? "movie" : "tv";
+	const data = await get<TMDBVideosResponse>(`/${endpoint}/${id}/videos`);
+	return data.results.filter(
+		(video) =>
+			video.site === "YouTube" &&
+			(video.type === "Trailer" || video.type === "Teaser"),
+	);
 }
 
 /**
@@ -662,39 +676,39 @@ export async function getMediaVideos(
  * Returns media that users commonly watch together based on ratings and popularity.
  */
 export async function getRelatedMedia(
-  id: string,
-  type: TMDBContentTypes,
-  limit: number = 10,
+	id: string,
+	type: TMDBContentTypes,
+	limit: number = 10,
 ): Promise<TMDBMovieSearchResult[] | TMDBShowSearchResult[]> {
-  const endpoint = type === TMDBContentTypes.MOVIE ? "movie" : "tv";
-  const data = await get<{
-    results: TMDBMovieSearchResult[] | TMDBShowSearchResult[];
-  }>(`/${endpoint}/${id}/recommendations`);
+	const endpoint = type === TMDBContentTypes.MOVIE ? "movie" : "tv";
+	const data = await get<{
+		results: TMDBMovieSearchResult[] | TMDBShowSearchResult[];
+	}>(`/${endpoint}/${id}/recommendations`);
 
-  return data.results.slice(0, limit);
+	return data.results.slice(0, limit);
 }
 
 export async function getPersonDetails(id: string): Promise<TMDBPerson> {
-  return get<TMDBPerson>(`/person/${id}`);
+	return get<TMDBPerson>(`/person/${id}`);
 }
 
 export async function getPersonImages(id: string): Promise<TMDBPersonImages> {
-  return get<TMDBPersonImages>(`/person/${id}/images`);
+	return get<TMDBPersonImages>(`/person/${id}/images`);
 }
 
 export function getPersonProfileImage(
-  profilePath: string | null,
+	profilePath: string | null,
 ): string | undefined {
-  const shouldProxyTmdb = usePreferencesStore.getState().proxyTmdb;
-  const imgUrl = `https://image.tmdb.org/t/p/w185/${profilePath}`;
+	const shouldProxyTmdb = usePreferencesStore.getState().proxyTmdb;
+	const imgUrl = `https://image.tmdb.org/t/p/w185/${profilePath}`;
 
-  if (shouldProxyTmdb) {
-    const proxyUrls = getProxyUrls();
-    const proxy = getNextProxy(proxyUrls);
-    if (proxy) {
-      return `${proxy}/?destination=${imgUrl}`;
-    }
-  }
+	if (shouldProxyTmdb) {
+		const proxyUrls = getProxyUrls();
+		const proxy = getNextProxy(proxyUrls);
+		if (proxy) {
+			return `${proxy}/?destination=${imgUrl}`;
+		}
+	}
 
-  if (profilePath) return imgUrl;
+	if (profilePath) return imgUrl;
 }
