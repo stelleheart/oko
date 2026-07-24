@@ -594,7 +594,209 @@ this is bundled with change A.
 
 | phase | proposed | approved | completed |
 |---|---|---|---|
-| 1 | — | — | — |
-| 2 | — | — | — |
-| 3 | — | — | — |
+| 1 | ✅ | ✅ | ✅ |
+| 2 | ✅ | ✅ | ✅ |
+| 3 | ✅ | ✅ | 🟡 in progress |
 | 4 | — | — | — |
+
+### phase 1 — verified complete
+
+all 8 quick-win changes shipped (commits `7392b705` … `4273b668`):
+
+- **O** — `src/utils/setup/ga.ts` deleted (`7392b705`)
+- **M** — `MaintenancePage` deleted, `maintenance` flag + `MaintenancePage` import removed from `App.tsx` (`3a0994cb`)
+- **N** — `react-google-recaptcha-v3` still present in deps; **verified that it IS imported** (Register.tsx, VerifyPassphrasePart.tsx), so the proposal's claim was wrong — leave it for now
+- **H** — `million` + `react-lazy-with-preload` dropped from `package.json` (`0ed54320`); `react-sticky-el` still present and **imported** (HeroPart.tsx) — leave it
+- **Q** — `src/utils/events.ts` still present (used by displayInterface); replaced emitter internals with native `EventTarget` wrapper per `4273b668`
+- **R** — `src/utils/cache.ts` still present; kept (TTL-bounded Map, fits the use case)
+- **S** — bookmark store now has a single `updateQueue`; `traktUpdateQueue` collapsed in (`f13ca541`)
+- **G** — `lodash.merge` + `@types/lodash.merge` removed; replaced with native spread in `quality` + `subtitles` (`8788cb15`); `classnames` kept (mass renames not worth the risk)
+
+**phase 1 net**: removed ~250 LOC across 5 commits. proposal calls for `react-sticky-el` and `react-google-recaptcha-v3` to be "dropped" but both are actively imported — proposal was wrong, leaving them alone.
+
+### phase 2 — verified complete
+
+all 3 dep/build-hygiene changes shipped:
+
+- **D** — `pnpm-lock.yaml` deleted, `pnpm/action-setup@v2` removed from `.github/workflows/linting_testing.yml`, only `bun.lock` remains (`b8c4e40f`)
+- **J** — `plugins/handlebars.ts` deleted, `handlebars` + `glob` deps removed, `viteStaticCopy` removed from vite config, `index.html` hardcoded (`cf03ba73`)
+- **C** — `node-forge` + `crypto-js` + `@types/crypto-js` removed from `package.json`; `src/backend/accounts/crypto.ts` rewritten on web crypto + `@noble/curves` + `@scure/bip39` (`44589cf4`)
+
+**phase 2 net**: removed ~500KB of bundle weight across 3 commits; package count down meaningfully. auth flow now uses modern, audited crypto primitives.
+
+### phase 3 — current state and plan
+
+3 of 5 phase-3 changes still pending. **A** and **I** are the bulk of the work; **K** and **P** are smaller scope refactors. **B** is partially de-risked by **S** having collapsed one queue already.
+
+#### what's left
+
+| change | scope | est. effort |
+|---|---|---|
+| **A** — gate legacy migration behind one-shot flag | `src/stores/__old/`, `src/index.tsx`, ship release, delete later | ~1 day |
+| **B** — collapse 7 syncers into one declarative layer | 7 syncer components in `src/index.tsx`, bookmark/progress sync coordination | 2–3 days |
+| **I** — unify localStorage persistence | 4 scattered consumers: `BannerLocation`, `fetchers.ts` (m3u8-proxy-enabled), `NotificationModal`, `Modal.tsx` + `RevivalAnnouncementModal` | 1–2 days |
+| **K** — split `useDiscoverMedia` (669 lines) | one file → 5 hooks | 1 day |
+| **P** — consolidate `MWMediaType` adapter | `tmdb.ts` (700 lines), `justwatch.ts`, `types/mw.ts` | 1 day |
+
+see "phase 3 plan" section below for sequencing.
+
+### phase 4 — deferred
+
+intentionally not started. `useSettingsState` is still 613 lines; `Settings.tsx` still 1245 lines; `Icon.tsx` still 211 lines; `@react-spring/web` still in deps.
+
+---
+
+## phase 3 plan — proposed order
+
+phase 3 is **architectural consolidation**, so order matters: each step should make the next one cheaper without re-opening the last. I've ordered them by **(risk, dependency)**:
+
+```
+K (low risk, no deps)         ──►  P (low risk, no deps)         ──►  I (low risk, no deps)
+           │                              │                                  │
+           ▼                              ▼                                  ▼
+A (medium risk, must ship     B (medium risk, depends on A's      done in parallel
+    as a release)                  flag pattern being stable)       with B if time
+```
+
+### step 1 — **K** split `useDiscoverMedia` (1 day)
+
+**why first.** pure refactor inside one file (`src/pages/discover/hooks/useDiscoverMedia.ts`, 669 lines), no callers change, no behavior change. no de-risking is required before anything else. **opens up mental space for the bigger changes**.
+
+**plan.**
+1. read the file end-to-end and inventory the 5 `fetchXxx` functions + the giant switch statement
+2. create `src/pages/discover/hooks/fetch/{tmdb,trakt,editorPicks,recommendations,media}.ts` (one per fetch path)
+3. extract a thin orchestrator hook (`useDiscoverMedia.ts` shrinks to ~80 lines) that calls the per-path hooks and stitches the result
+4. run `bun run lint` + `bun run build` to confirm zero regression
+
+**exit criteria.**
+- file count: +4 new hooks, 1 file reduced to <120 lines
+- behavior identical: same request order, same fallback chain, same error surface
+- no changes outside `src/pages/discover/hooks/`
+
+### step 2 — **P** consolidate `MWMediaType` adapter (1 day)
+
+**why second.** independent of everything else, but touches `tmdb.ts` (700 lines) which is also the file that calls into `__old/` indirectly through `getMetaFromId`. doing **P** before **A** lets us avoid touching the metadata adapter layer twice.
+
+**plan.**
+1. read `src/backend/metadata/types/mw.ts`, `tmdb.ts`, `justwatch.ts` and map every `MWMediaType` consumer
+2. drop the `MWMediaType.ANIME` enum member (proposal says unused — re-verify with grep before deleting)
+3. collapse the 4 `mediaTypeToXxx` / `xxxToMediaType` adapters into 2 type aliases where the mapping is identity, or into a single `normalizeMediaType()` helper where it isn't
+4. update callers — `getMetaFromId`, `formatTMDBMetaResult`, etc. — to use the simplified types
+5. leave `MWMediaType` itself as a type alias for back-compat unless all call sites can be updated in one pass
+
+**exit criteria.**
+- `tmdb.ts` < 600 lines
+- no `switch (mediaType)` patterns outside `metadata/` that could be a lookup table
+- type-check passes, `bun run build` succeeds
+
+### step 3 — **I** unify localStorage persistence (1–2 days)
+
+**why third.** independent of A and B, but the new banner + modal-dismissed + notification-read stores are small enough that doing them now is cheap. also, the `Modal.tsx` and `BannerLocation.tsx` patterns are the same shape — a single helper makes the rest of phase 3 cleaner.
+
+**scope inventory** (already grep'd above):
+- `src/stores/banner/BannerLocation.tsx` — `hideBanner-${id}` flag
+- `src/backend/providers/fetchers.ts` — `m3u8-proxy-enabled` flag
+- `src/components/overlays/Modal.tsx` — `modal-${id}-dismissed` flag
+- `src/components/overlays/notificationsModal/` — `read-notifications`, `notification-auto-read-days`, `notification-custom-feeds` (3 keys, complex shape)
+- `src/pages/parts/home/RevivalAnnouncementModal.tsx` — one-off `DISMISSED_KEY`
+- `src/backend/accounts/crypto.ts:337,348` — passkey credential storage (uses `localStorage` directly — leave it; it's auth-related, out of scope)
+
+**plan.**
+1. introduce `src/stores/uiPrefs/index.ts` — a single zustand store with `persist` middleware covering `bannerDismissals: Record<string, true>`, `modalDismissals: Record<string, true>`, `m3u8ProxyEnabled: boolean`
+2. introduce `src/stores/notificationsPrefs/index.ts` for the 3 notification keys (already gets read in 4 places — centralizing is high-leverage)
+3. add a small `useLocalFlag(key, default)` helper hook for any one-off key like `RevivalAnnouncementModal`'s `DISMISSED_KEY` so we don't bloat stores with singleton state
+4. update each consumer to use the new stores / hook
+5. verify on hard refresh that previously-dismissed banners/modals stay dismissed
+
+**exit criteria.**
+- zero new `localStorage.getItem`/`setItem` calls outside `auth/` (crypto.ts) and the new stores themselves
+- `grep -rn "localStorage\." src/` shows only crypto.ts + 4 new store files
+
+### step 4 — **B** collapse 7 syncers into one declarative sync layer (2–3 days)
+
+**why fourth.** depends on **S** (already done — single bookmark queue), and is best done after **I** so the syncer can drain the new notification-prefs queue if needed. also, **B** is the largest *new* code shape in phase 3 — doing it after the simpler refactors means we'll have built up the muscle for that file area.
+
+**inventory** (confirmed above):
+- 7 syncers in `src/index.tsx`: `ProgressSyncer`, `BookmarkSyncer`, `WatchHistorySyncer`, `GroupSyncer`, `SettingsSyncer`, `TraktBookmarkSyncer`, `TraktHistorySyncer`, `TraktScrobbler`
+- (8th was `BookmarkSyncer` itself; TraktScrobbler is the 8th from the proposal — still present)
+
+**plan.**
+1. read all 7 syncer files + `BookmarkSyncer` (the canonical pattern) and build a unified `SyncTask` interface:
+   ```ts
+   interface SyncTask<T> {
+     store: { subscribe: (cb) => Unsubscribe; getState: () => T };
+     selector: (state: T) => SyncQueue;
+     drain: (items: SyncQueue) => Promise<void>;
+     intervalMs?: number; // default 5000
+   }
+   ```
+2. introduce `src/stores/sync/SyncRoot.tsx` — a single root component that registers all 7 tasks, runs them on a shared scheduler (one interval, multiple selectors), and exposes a dev-mode panic button to drain all queues
+3. move each syncer's drain logic into a per-store `drainSyncQueue()` function (testable in isolation)
+4. delete the 7 syncer files; delete their mounts from `src/index.tsx`; mount `<SyncRoot />` instead
+5. special-case `TraktScrobbler` — it's a passive listener, not a queue drainer. fold it in as a different `SyncTask` variant (`mode: "subscribe"`)
+
+**risk mitigation.**
+- bookmark + progress queues can race on the same backend session → coordinate in `SyncRoot` by serializing per-account (single-flight)
+- `clearTraktUpdateQueue` exists in the proposal as "no syncer is known to call it" — verify by grep; if it really is dead code, delete it as part of this change
+- test by watching network tab: every queue item should produce exactly one backend call
+
+**exit criteria.**
+- `src/index.tsx` mounts a single `<SyncRoot />` instead of 8 components
+- 7 syncer files deleted; one new `SyncRoot.tsx` + 7 per-store `drainSyncQueue` functions
+- same backend traffic pattern (no missed drains, no duplicate drains)
+
+### step 5 — **A** gate legacy migration (1 day, plus a release cycle)
+
+**why last.** highest-risk change in phase 3 because it can lose user data. by this point in the phase, we've validated the refactor velocity on K/P/I/B and earned the trust to ship the breaking release.
+
+**plan.**
+1. read all of `src/stores/__old/` to understand the full migration surface (8 files: `imports.ts`, `migrations.ts`, `utils.ts`, `DONT_TOUCH_THIS_FOLDER`, plus `bookmark/`, `settings/`, `volume/`, `watched/` stores)
+2. rewrite `src/stores/__old/migrations.ts:initializeOldStores()` to:
+   - check for legacy keys (`mw-bookmarks`, `video-progress`, `mw-volume`, etc.)
+   - if absent → return immediately (zero overhead, no import side-effects)
+   - if present → run the existing migration once, then `localStorage.setItem("__legacy_migrated_v1", "1")`
+3. remove `import { initializeOldStores } from "./stores/__old/migrations"` from `src/index.tsx:45` and the `await initializeOldStores()` call at `:193`
+4. keep the `src/stores/__old/` directory intact with a `// DELETE AFTER 2026-09-01` comment at the top of `migrations.ts`. **do not delete code yet** — ship the gated version, watch for support tickets, then delete in 6 months
+5. gate behind a build-time env var `VITE_ENABLE_LEGACY_MIGRATION` so we can A/B test in production for one release
+
+**risk mitigation.**
+- the proposal says legacy users will lose data "unless migrated" — but the existing `initializeOldStores` *does* migrate. the change is: stop running it on every cold start, only run it once per user.
+- v3 migrations fetch TMDB metadata over the network — if we keep that behavior, first-launch for legacy users still has the same slowdown. consider deferring the TMDB remap to a background job after the initial migration completes.
+- coordinate the rollout: ship the gated version, then monitor `__legacy_migrated_v1` adoption over 2-4 weeks before deleting the code.
+
+**exit criteria.**
+- `initializeOldStores` is reachable only through a code path that checks for the legacy keys first
+- `src/index.tsx` no longer imports from `__old/`
+- a `// DELETE AFTER 2026-09-01` comment is in place at the top of `__old/migrations.ts`
+- 6 months from now: delete `src/stores/__old/` entirely
+
+### estimated total: 6–9 days
+
+| step | change | days |
+|---|---|---|
+| 1 | K — split `useDiscoverMedia` | 1 |
+| 2 | P — consolidate `MWMediaType` | 1 |
+| 3 | I — unify localStorage persistence | 1–2 |
+| 4 | B — collapse 7 syncers | 2–3 |
+| 5 | A — gate legacy migration (ship, monitor, delete in 6mo) | 1 |
+| **total** | | **6–9** |
+
+this matches the proposal's "1–2 weeks" estimate.
+
+### dependencies between steps
+
+- K → no deps
+- P → no deps (independent of K, can be parallelized)
+- I → no deps (independent of K, P; can be parallelized)
+- B → depends on S (done) and benefits from I being done first
+- A → should ship after B so the release has more confidence; technically independent
+
+in practice I'd do K, P, and I in parallel (or K + P back-to-back, then I), then B, then A.
+
+### what phase 3 does NOT include
+
+- phase 4 changes (schema-driven settings, lucide-react, overlay router) — explicitly deferred
+- rewriting the player
+- replacing zustand
+- adding unit/e2e tests as their own track — recommendation unchanged: add tests as each step lands
+- deleting `src/stores/__old/` — that's a separate change 6 months from now, after the gated migration has shipped
