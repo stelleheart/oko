@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useMemo, useRef } from "react";
+import { type ReactNode, useEffect, useMemo, useRef } from "react";
 
 import { makeVideoElementDisplayInterface } from "@/components/player/display/base";
 import { convertSubtitlesToObjectUrl } from "@/components/player/utils/captions";
@@ -10,127 +10,130 @@ import { useInitializeSource } from "../hooks/useInitializePlayer";
 
 // initialize display interface
 function useDisplayInterface() {
-  const display = usePlayerStore((s) => s.display);
-  const setDisplay = usePlayerStore((s) => s.setDisplay);
+	const display = usePlayerStore((s) => s.display);
+	const setDisplay = usePlayerStore((s) => s.setDisplay);
 
-  const displayRef = useRef(display);
-  useEffect(() => {
-    displayRef.current = display;
-  }, [display]);
+	const displayRef = useRef(display);
+	useEffect(() => {
+		displayRef.current = display;
+	}, [display]);
 
-  useEffect(() => {
-    if (!displayRef.current) {
-      const newDisplay = makeVideoElementDisplayInterface();
-      displayRef.current = newDisplay;
-      setDisplay(newDisplay);
-    }
-    return () => {
-      if (displayRef.current) {
-        displayRef.current.destroy();
-        displayRef.current = null;
-        setDisplay(null);
-      }
-    };
-  }, [setDisplay]);
+	useEffect(() => {
+		if (!displayRef.current) {
+			const newDisplay = makeVideoElementDisplayInterface();
+			displayRef.current = newDisplay;
+			setDisplay(newDisplay);
+		}
+		return () => {
+			if (displayRef.current) {
+				displayRef.current.destroy();
+				displayRef.current = null;
+				setDisplay(null);
+			}
+		};
+	}, [setDisplay]);
 }
 
 export function useShouldShowVideoElement() {
-  const status = usePlayerStore((s) => s.status);
+	const status = usePlayerStore((s) => s.status);
 
-  if (status !== playerStatus.PLAYING) return false;
-  return true;
+	if (status !== playerStatus.PLAYING) return false;
+	return true;
 }
 
 function useObjectUrl(cb: () => string | null, deps: any[]) {
-  const lastObjectUrl = useRef<string | null>(null);
-  const output = useMemo(() => {
-    if (lastObjectUrl.current) URL.revokeObjectURL(lastObjectUrl.current);
-    const data = cb();
-    lastObjectUrl.current = data;
-    return data;
-    // deps are passed in, cb is known not to be changed
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+	const lastObjectUrl = useRef<string | null>(null);
+	const output = useMemo(() => {
+		if (lastObjectUrl.current) URL.revokeObjectURL(lastObjectUrl.current);
+		const data = cb();
+		lastObjectUrl.current = data;
+		return data;
+		// deps are passed in, cb is known not to be changed
+	}, deps);
 
-  useEffect(() => {
-    return () => {
-      // this is intentionally done only in cleanup
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      if (lastObjectUrl.current) URL.revokeObjectURL(lastObjectUrl.current);
-    };
-  }, []);
+	useEffect(() => {
+		return () => {
+			// this is intentionally done only in cleanup
+			if (lastObjectUrl.current) URL.revokeObjectURL(lastObjectUrl.current);
+		};
+	}, []);
 
-  return output;
+	return output;
 }
 
 function VideoElement() {
-  const videoEl = useRef<HTMLVideoElement>(null);
-  const trackEl = useRef<HTMLTrackElement>(null);
-  const display = usePlayerStore((s) => s.display);
-  const srtData = usePlayerStore((s) => s.caption.selected?.srtData);
-  const language = usePlayerStore((s) => s.caption.selected?.language);
-  const source = usePlayerStore((s) => s.source);
-  const enableNativeSubtitles = usePreferencesStore(
-    (s) => s.enableNativeSubtitles,
-  );
-  const trackObjectUrl = useObjectUrl(
-    () => (srtData ? convertSubtitlesToObjectUrl(srtData) : null),
-    [srtData],
-  );
+	const videoEl = useRef<HTMLVideoElement>(null);
+	const trackEl = useRef<HTMLTrackElement>(null);
+	const display = usePlayerStore((s) => s.display);
+	const srtData = usePlayerStore((s) => s.caption.selected?.srtData);
+	const language = usePlayerStore((s) => s.caption.selected?.language);
+	const source = usePlayerStore((s) => s.source);
+	const enableNativeSubtitles = usePreferencesStore(
+		(s) => s.enableNativeSubtitles,
+	);
+	const trackObjectUrl = useObjectUrl(
+		() => (srtData ? convertSubtitlesToObjectUrl(srtData) : null),
+		[srtData],
+	);
 
-  // Use native tracks when the setting is enabled
-  const shouldUseNativeTrack = enableNativeSubtitles && source !== null;
+	// Use native tracks when the setting is enabled
+	const shouldUseNativeTrack = enableNativeSubtitles && source !== null;
 
-  // report video element to display interface
-  useEffect(() => {
-    if (display && videoEl.current) {
-      display.processVideoElement(videoEl.current);
-    }
-  }, [display, videoEl]);
+	// Report video element to the display interface ONCE per element instance.
+	// ponytail: prev deps `[display, videoEl]` re-ran `processVideoElement` on every
+	// store mutation (which calls destroyVideoElement + setSource inside the display),
+	// causing HLS to re-attach the video element on every volume/caption/keepalive tick.
+	const hasAttached = useRef(false);
+	useEffect(() => {
+		if (!hasAttached.current && display && videoEl.current) {
+			hasAttached.current = true;
+			display.processVideoElement(videoEl.current);
+		}
+	}, [display]);
 
-  // Control track visibility based on setting
-  useEffect(() => {
-    if (trackEl.current) {
-      trackEl.current.track.mode = shouldUseNativeTrack ? "showing" : "hidden";
-    }
-  }, [shouldUseNativeTrack, trackEl]);
+	// Control track visibility based on setting
+	useEffect(() => {
+		if (trackEl.current) {
+			trackEl.current.track.mode = shouldUseNativeTrack ? "showing" : "hidden";
+		}
+	}, [shouldUseNativeTrack]);
 
-  // Attach track when native subtitles are enabled
-  // SubtitleView handles showing custom captions when native subtitles are disabled
-  let subtitleTrack: ReactNode = null;
-  if (shouldUseNativeTrack && trackObjectUrl && language) {
-    subtitleTrack = (
-      <track
-        ref={trackEl}
-        label="oko Captions"
-        kind="subtitles"
-        srcLang={language}
-        src={trackObjectUrl}
-        default
-      />
-    );
-  }
+	// Attach track when native subtitles are enabled
+	// SubtitleView handles showing custom captions when native subtitles are disabled
+	let subtitleTrack: ReactNode = null;
+	if (shouldUseNativeTrack && trackObjectUrl && language) {
+		subtitleTrack = (
+			<track
+				ref={trackEl}
+				label="oko Captions"
+				kind="subtitles"
+				srcLang={language}
+				src={trackObjectUrl}
+				default
+			/>
+		);
+	}
 
-  return (
-    <video
-      id="video-element"
-      className="absolute inset-0 w-full h-screen bg-black"
-      autoPlay
-      playsInline
-      ref={videoEl}
-      preload="metadata"
-      onContextMenu={(e) => e.preventDefault()}
-    >
-      {subtitleTrack}
-    </video>
-  );
+	return (
+		<video
+			id="video-element"
+			className="absolute inset-0 w-full h-screen bg-black"
+			autoPlay
+			playsInline
+			ref={videoEl}
+			preload="metadata"
+			onContextMenu={(e) => e.preventDefault()}
+		>
+			{subtitleTrack}
+		</video>
+	);
 }
 
 export function VideoContainer() {
-  const show = useShouldShowVideoElement();
-  useDisplayInterface();
-  useInitializeSource();
+	const show = useShouldShowVideoElement();
+	useDisplayInterface();
+	useInitializeSource();
 
-  if (!show) return null;
-  return <VideoElement />;
+	if (!show) return null;
+	return <VideoElement />;
 }

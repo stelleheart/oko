@@ -1,4 +1,4 @@
-import { ReactNode, RefObject, useEffect, useRef } from "react";
+import { type ReactNode, type RefObject, useEffect, useRef } from "react";
 
 import { OverlayDisplay } from "@/components/overlays/OverlayDisplay";
 import { AutoSkipSegments } from "@/components/player/internals/AutoSkipSegments";
@@ -20,96 +20,100 @@ import { usePlayerStore } from "@/stores/player/store";
 import { WatchPartyReporter } from "../internals/Backend/WatchPartyReporter";
 
 export interface PlayerProps {
-  children?: ReactNode;
-  showingControls: boolean;
-  onLoad?: () => void;
+	children?: ReactNode;
+	showingControls: boolean;
+	onLoad?: () => void;
 }
 
 function useHovering(containerEl: RefObject<HTMLDivElement>) {
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const updateInterfaceHovering = usePlayerStore(
-    (s) => s.updateInterfaceHovering,
-  );
-  const hovering = usePlayerStore((s) => s.interface.hovering);
+	const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const updateInterfaceHovering = usePlayerStore(
+		(s) => s.updateInterfaceHovering,
+	);
+	const hovering = usePlayerStore((s) => s.interface.hovering);
 
-  useEffect(() => {
-    if (!containerEl.current) return;
-    const el = containerEl.current;
+	useEffect(() => {
+		if (!containerEl.current) return;
+		const el = containerEl.current;
 
-    function pointerMove(e: PointerEvent) {
-      if (e.pointerType !== "mouse") return;
-      updateInterfaceHovering(PlayerHoverState.MOUSE_HOVER);
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      timeoutRef.current = setTimeout(() => {
-        updateInterfaceHovering(PlayerHoverState.NOT_HOVERING);
-        timeoutRef.current = null;
-      }, 3000);
-    }
+		function pointerMove(e: PointerEvent) {
+			if (e.pointerType !== "mouse") return;
+			updateInterfaceHovering(PlayerHoverState.MOUSE_HOVER);
+			if (timeoutRef.current) clearTimeout(timeoutRef.current);
+			timeoutRef.current = setTimeout(() => {
+				updateInterfaceHovering(PlayerHoverState.NOT_HOVERING);
+				timeoutRef.current = null;
+			}, 3000);
+		}
 
-    function pointerLeave(e: PointerEvent) {
-      if (e.pointerType !== "mouse") return;
-      updateInterfaceHovering(PlayerHoverState.NOT_HOVERING);
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    }
+		function pointerLeave(e: PointerEvent) {
+			if (e.pointerType !== "mouse") return;
+			updateInterfaceHovering(PlayerHoverState.NOT_HOVERING);
+			if (timeoutRef.current) clearTimeout(timeoutRef.current);
+		}
 
-    el.addEventListener("pointermove", pointerMove);
-    el.addEventListener("pointerleave", pointerLeave);
+		el.addEventListener("pointermove", pointerMove);
+		el.addEventListener("pointerleave", pointerLeave);
 
-    return () => {
-      el.removeEventListener("pointermove", pointerMove);
-      el.removeEventListener("pointerleave", pointerLeave);
-    };
-  }, [containerEl, hovering, updateInterfaceHovering]);
+		return () => {
+			el.removeEventListener("pointermove", pointerMove);
+			el.removeEventListener("pointerleave", pointerLeave);
+		};
+	}, [containerEl, hovering, updateInterfaceHovering]);
 }
 
 function BaseContainer(props: { children?: ReactNode }) {
-  const containerEl = useRef<HTMLDivElement | null>(null);
-  const display = usePlayerStore((s) => s.display);
-  useHovering(containerEl);
+	const containerEl = useRef<HTMLDivElement | null>(null);
+	const display = usePlayerStore((s) => s.display);
+	useHovering(containerEl);
 
-  // report container element to display interface
-  useEffect(() => {
-    if (display && containerEl.current) {
-      display.processContainerElement(containerEl.current);
-    }
-  }, [display, containerEl]);
+	// report container element to display interface ONCE
+	// ponytail: `[display, containerEl]` re-ran processContainerElement on every
+	// store mutation, mirroring the VideoElement bug.
+	const hasAttached = useRef(false);
+	useEffect(() => {
+		if (!hasAttached.current && display && containerEl.current) {
+			hasAttached.current = true;
+			display.processContainerElement(containerEl.current);
+		}
+	}, [display]);
 
-  return (
-    <div ref={containerEl}>
-      <OverlayDisplay>
-        <div className="h-screen select-none">{props.children}</div>
-      </OverlayDisplay>
-    </div>
-  );
+	return (
+		<div ref={containerEl}>
+			<OverlayDisplay>
+				<div className="h-screen select-none">{props.children}</div>
+			</OverlayDisplay>
+		</div>
+	);
 }
 
 export function Container(props: PlayerProps) {
-  const propRef = useRef(props.onLoad);
-  useEffect(() => {
-    propRef.current?.();
-  }, []);
+	const propRef = useRef(props.onLoad);
+	useEffect(() => {
+		propRef.current?.();
+	}, []);
 
-  return (
-    <div className="relative">
-      <BaseContainer>
-        <MetaReporter />
-        <ThumbnailScraper />
-        <CastingInternal />
-        <VideoContainer />
-        <ProgressSaver />
-        <KeyboardEvents />
-        <GamepadEvents />
-        <MediaSession />
-        <WatchPartyReporter />
-        <SkipTracker />
-        <WatchPartyResetter />
-        <AutoSkipSegments />
-        <div className="relative h-screen overflow-hidden">
-          <VideoClickTarget showingControls={props.showingControls} />
-          <HeadUpdater />
-          {props.children}
-        </div>
-      </BaseContainer>
-    </div>
-  );
+	return (
+		<div className="relative">
+			<BaseContainer>
+				<MetaReporter />
+				<ThumbnailScraper />
+				<CastingInternal />
+				<VideoContainer />
+				<ProgressSaver />
+				<KeyboardEvents />
+				<GamepadEvents />
+				<MediaSession />
+				<WatchPartyReporter />
+				<SkipTracker />
+				<WatchPartyResetter />
+				<AutoSkipSegments />
+				<div className="relative h-screen overflow-hidden">
+					<VideoClickTarget showingControls={props.showingControls} />
+					<HeadUpdater />
+					{props.children}
+				</div>
+			</BaseContainer>
+		</div>
+	);
 }
