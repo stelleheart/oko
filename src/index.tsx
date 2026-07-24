@@ -1,6 +1,9 @@
 import "@/setup/pwa";
 import "core-js/stable";
-import "./stores/__old/imports";
+// NOTE: `./stores/__old/imports` is now loaded dynamically inside
+// `runLegacyMigrationIfNeeded()` (src/stores/__old/migrations.ts) only when
+// legacy localStorage keys are detected. Users on fresh installs never load
+// the migration machinery.
 import "@/setup/ga";
 import "@/assets/css/index.css";
 
@@ -24,16 +27,12 @@ import { LargeTextPart } from "@/pages/parts/util/LargeTextPart";
 import App from "@/setup/App";
 import { conf } from "@/setup/config";
 import { useAuthStore } from "@/stores/auth";
-import { BookmarkSyncer } from "@/stores/bookmarks/BookmarkSyncer";
-import { GroupSyncer } from "@/stores/groupOrder/GroupSyncer";
 import { changeAppLanguage, useLanguageStore } from "@/stores/language";
-import { ProgressSyncer } from "@/stores/progress/ProgressSyncer";
-import { SettingsSyncer } from "@/stores/subtitles/SettingsSyncer";
+import { SyncRoot } from "@/stores/sync/SyncRoot";
 import { ThemeProvider } from "@/stores/theme";
 import { TraktBookmarkSyncer } from "@/stores/trakt/TraktBookmarkSyncer";
 import { TraktHistorySyncer } from "@/stores/trakt/TraktHistorySyncer";
 import { TraktScrobbler } from "@/stores/trakt/TraktScrobbler";
-import { WatchHistorySyncer } from "@/stores/watchHistory/WatchHistorySyncer";
 import { detectRegion, useRegionStore } from "@/utils/detectRegion";
 
 import {
@@ -42,7 +41,7 @@ import {
 } from "./backend/extension/messaging";
 import { initializeChromecast } from "./setup/chromecast";
 import { initializeImageFadeIn } from "./setup/imageFadeIn";
-import { initializeOldStores } from "./stores/__old/migrations";
+import { runLegacyMigrationIfNeeded } from "./stores/__old/migrations";
 
 // initialize
 initializeChromecast();
@@ -190,7 +189,7 @@ function AuthWrapper() {
 function MigrationRunner() {
   const status = useAsync(async () => {
     changeAppLanguage(useLanguageStore.getState().language);
-    await initializeOldStores();
+    await runLegacyMigrationIfNeeded();
 
     const region = await detectRegion();
     useRegionStore.getState().setRegion(region);
@@ -253,11 +252,7 @@ root.render(
         <Suspense fallback={<LoadingScreen type="lazy" />}>
           <ExtensionStatus />
           <ThemeProvider applyGlobal>
-            <ProgressSyncer />
-            <BookmarkSyncer />
-            <WatchHistorySyncer />
-            <GroupSyncer />
-            <SettingsSyncer />
+            <SyncRoot />
             <TraktBookmarkSyncer />
             <TraktHistorySyncer />
             <TraktScrobbler />
