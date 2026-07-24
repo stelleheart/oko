@@ -26,6 +26,53 @@ interface InternalStoreData {
 const storeCallbacks: Record<string, ((data: any) => void)[]> = {};
 const stores: Record<string, [StoreRet<any>, InternalStoreData]> = {};
 
+// DELETE AFTER 2026-09-01
+//
+// Legacy versioned-store migration. These stores (mw-settings, mw-bookmarks,
+// video-progress, mw-volume) were used by previous versions of the app and
+// need to be converted into the current zustand stores on first launch for
+// users upgrading from a pre-5.x build.
+//
+// `initializeOldStores` is now gated behind `runLegacyMigrationIfNeeded`.
+// It only runs the migration if at least one legacy key is present in
+// localStorage, then writes `__legacy_migrated_v1` so it never runs again.
+// Users who never had legacy keys (i.e. installed 5.x fresh) skip this
+// entirely, removing the always-on cold-start cost.
+//
+// After 2026-09-01: delete this entire directory (`src/stores/__old/`).
+
+/**
+ * Runs the legacy migration exactly once per browser, only if legacy keys
+ * exist. Safe to call on every cold start — no-ops when there's nothing
+ * to migrate or when the migration has already been completed.
+ */
+export async function runLegacyMigrationIfNeeded(): Promise<void> {
+  // 1. if we've already migrated in a previous session, do nothing.
+  if (localStorage.getItem("__legacy_migrated_v1")) return;
+
+  // 2. if none of the legacy keys are present, do nothing.
+  const legacyKeys = ["mw-settings", "mw-bookmarks", "video-progress", "mw-volume"];
+  const hasLegacyData = legacyKeys.some((k) => localStorage.getItem(k));
+  if (!hasLegacyData) {
+    // still mark as done so we don't keep checking on every cold start.
+    localStorage.setItem("__legacy_migrated_v1", "1");
+    return;
+  }
+
+  // 3. legacy data exists — run the migration.
+  // The `stores` map is populated by the side-effect imports below; dynamic
+  // import keeps those side effects out of the cold-start path when no
+  // legacy data is present.
+  await import("./imports");
+  await initializeOldStores();
+  localStorage.setItem("__legacy_migrated_v1", "1");
+}
+
+/**
+ * Original migration runner — kept intact, only called via the gated wrapper
+ * above. Iterates every registered legacy store, applies version migrations,
+ * and writes the result back to localStorage.
+ */
 export async function initializeOldStores() {
   // migrate all stores
   for (const [store, internal] of Object.values(stores)) {
