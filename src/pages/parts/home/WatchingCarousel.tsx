@@ -1,5 +1,5 @@
 import { Listbox } from "@headlessui/react";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { EditButton } from "@/components/buttons/EditButton";
@@ -11,6 +11,7 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { CarouselNavButtons } from "@/pages/discover/components/CarouselNavButtons";
 import { useProgressStore } from "@/stores/progress";
 import { shouldShowProgress } from "@/stores/progress/utils";
+import { useHomePrefsStore } from "@/stores/homePrefs";
 import { SortOption, sortMediaItems } from "@/utils/mediaSorting";
 import { MediaItem } from "@/utils/mediaTypes";
 
@@ -40,15 +41,9 @@ export function WatchingCarousel({
   const browser = !!window.chrome;
   let isScrolling = false;
   const [editing, setEditing] = useState(false);
-  const [sortBy, setSortBy] = useState<SortOption>(() => {
-    const saved = localStorage.getItem("__MW::watchingSort");
-    return (saved as SortOption) || "date";
-  });
+  const sortBy = useHomePrefsStore((s) => s.watchingSort);
+  const setWatchingSort = useHomePrefsStore((s) => s.setWatchingSort);
   const removeItem = useProgressStore((s) => s.removeItem);
-
-  useEffect(() => {
-    localStorage.setItem("__MW::watchingSort", sortBy);
-  }, [sortBy]);
 
   const { isMobile } = useIsMobile();
 
@@ -70,7 +65,7 @@ export function WatchingCarousel({
           ...entry[1],
         });
       });
-    return sortMediaItems(output, sortBy, undefined, progressItems);
+    return sortMediaItems(output, sortBy as SortOption, undefined, progressItems);
   }, [progressItems, sortBy]);
 
   const handleWheel = (e: React.WheelEvent) => {
@@ -140,8 +135,7 @@ export function WatchingCarousel({
             selectedItem={selectedSortOption}
             setSelectedItem={(item) => {
               const newSort = item.id as SortOption;
-              setSortBy(newSort);
-              localStorage.setItem("__MW::watchingSort", newSort);
+              setWatchingSort(newSort);
             }}
             options={sortOptions}
             customButton={

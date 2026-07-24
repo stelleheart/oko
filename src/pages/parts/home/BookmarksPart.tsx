@@ -23,6 +23,7 @@ import { FolderModal } from "@/components/overlays/FolderModal";
 import { useModal } from "@/components/overlays/Modal";
 import { useBookmarkStore } from "@/stores/bookmarks";
 import { useGroupOrderStore } from "@/stores/groupOrder";
+import { useHomePrefsStore } from "@/stores/homePrefs";
 import { useProgressStore } from "@/stores/progress";
 import { parseGroupString } from "@/utils/bookmarkModifications";
 import { SortOption } from "@/utils/mediaSorting";
@@ -54,10 +55,11 @@ export function BookmarksPart({
   const modifyBookmarksByGroup = useBookmarkStore(
     (s) => s.modifyBookmarksByGroup,
   );
-  const [sortBy, setSortBy] = useState<SortOption>(() => {
-    const saved = localStorage.getItem("__MW::bookmarksSort");
-    return (saved as SortOption) || "date";
-  });
+  const [sortBy, setSortBy] = useState<SortOption>(
+    () =>
+      (useHomePrefsStore.getState().bookmarksSort as SortOption) || "date",
+  );
+  const setBookmarksSort = useHomePrefsStore((s) => s.setBookmarksSort);
   const [activeFolderModal, setActiveFolderModal] = useState<string | null>(
     null,
   );
@@ -69,10 +71,6 @@ export function BookmarksPart({
       },
     }),
   );
-
-  useEffect(() => {
-    localStorage.setItem("__MW::bookmarksSort", sortBy);
-  }, [sortBy]);
 
   const { allGroups, rootMediaItems } = useMemo(() => {
     const list = getList(bookmarks);
@@ -191,7 +189,7 @@ export function BookmarksPart({
             setSelectedItem={(item) => {
               const newSort = item.id as SortOption;
               setSortBy(newSort);
-              localStorage.setItem("__MW::bookmarksSort", newSort);
+              setBookmarksSort(newSort);
             }}
             options={sortOptions}
             customButton={

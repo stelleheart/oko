@@ -5,24 +5,28 @@ import { Icons } from "@/components/Icon";
 import { useModal } from "@/components/overlays/Modal";
 import { OverlayPortal } from "@/components/overlays/OverlayDisplay";
 import { Flare } from "@/components/utils/Flare";
+import { useLocalFlag } from "@/hooks/useLocalFlag";
 
 const MODAL_ID = "revival-announcement";
-const DISMISSED_KEY = `modal-${MODAL_ID}-dismissed`;
 
 export function RevivalAnnouncementModal() {
   const modal = useModal(MODAL_ID);
+  const { value: dismissed, setTrue: markDismissed } = useLocalFlag(
+    `modal-${MODAL_ID}-dismissed`,
+    false,
+  );
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") return;
-    if (!localStorage.getItem(DISMISSED_KEY)) {
+    if (!dismissed) {
       modal.show();
     }
-  }, [modal]);
+  }, [modal, dismissed]);
 
   const handleClose = useCallback(() => {
-    localStorage.setItem(DISMISSED_KEY, "true");
+    markDismissed();
     modal.hide();
-  }, [modal]);
+  }, [modal, markDismissed]);
 
   return (
     <OverlayPortal darken close={handleClose} show={modal.isShown}>

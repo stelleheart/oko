@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Icon, Icons } from "@/components/Icon";
+import { useNotificationsPrefsStore } from "@/stores/notificationsPrefs";
 
 import { DetailView } from "./DetailView";
 import { ListView } from "./ListView";
@@ -29,42 +30,25 @@ export function NotificationModal({ id }: NotificationModalProps) {
   const [isShiftHeld, setIsShiftHeld] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Settings state
-  const [autoReadDays, setAutoReadDays] = useState<number>(14);
-  const [customFeeds, setCustomFeeds] = useState<string[]>([]);
+  // Settings state — backed by the persisted notificationsPrefs store.
+  const storedAutoReadDays = useNotificationsPrefsStore((s) => s.autoReadDays);
+  const storedCustomFeeds = useNotificationsPrefsStore((s) => s.customFeeds);
+  const setStoredAutoReadDays = useNotificationsPrefsStore(
+    (s) => s.setAutoReadDays,
+  );
+  const setStoredCustomFeeds = useNotificationsPrefsStore(
+    (s) => s.setCustomFeeds,
+  );
+  const [autoReadDays, setAutoReadDays] = useState<number>(storedAutoReadDays);
+  const [customFeeds, setCustomFeeds] = useState<string[]>(storedCustomFeeds);
 
-  // Load read notifications and settings from localStorage
+  // Sync persisted preferences (read notifications, auto-read days, custom feeds)
+  // from the notificationsPrefs store into local state on first mount.
   useEffect(() => {
-    const savedRead = localStorage.getItem("read-notifications");
-    if (savedRead) {
-      try {
-        const readArray = JSON.parse(savedRead);
-        setReadNotifications(new Set(readArray));
-      } catch (e) {
-        console.error("Failed to parse read notifications:", e);
-      }
-    }
-
-    // Load settings
-    const savedAutoReadDays = localStorage.getItem(
-      "notification-auto-read-days",
-    );
-    if (savedAutoReadDays) {
-      try {
-        setAutoReadDays(parseInt(savedAutoReadDays, 10));
-      } catch (e) {
-        console.error("Failed to parse auto read days:", e);
-      }
-    }
-
-    const savedCustomFeeds = localStorage.getItem("notification-custom-feeds");
-    if (savedCustomFeeds) {
-      try {
-        setCustomFeeds(JSON.parse(savedCustomFeeds));
-      } catch (e) {
-        console.error("Failed to parse custom feeds:", e);
-      }
-    }
+    const state = useNotificationsPrefsStore.getState();
+    setReadNotifications(new Set(state.readNotifications));
+    setAutoReadDays(state.autoReadDays);
+    setCustomFeeds(state.customFeeds);
   }, []);
 
   // Handle shift key for mark all as unread button
@@ -201,11 +185,10 @@ export function NotificationModal({ id }: NotificationModalProps) {
           const newReadSet = new Set(prevReadSet);
           autoReadGuids.forEach((guid) => newReadSet.add(guid));
 
-          // Update localStorage
-          localStorage.setItem(
-            "read-notifications",
-            JSON.stringify(Array.from(newReadSet)),
-          );
+          // Persist to the notificationsPrefs store.
+          useNotificationsPrefsStore
+            .getState()
+            .setReadNotifications(Array.from(newReadSet));
 
           return newReadSet;
         });
@@ -238,11 +221,10 @@ export function NotificationModal({ id }: NotificationModalProps) {
     newReadSet.add(guid);
     setReadNotifications(newReadSet);
 
-    // Save to localStorage
-    localStorage.setItem(
-      "read-notifications",
-      JSON.stringify(Array.from(newReadSet)),
-    );
+    // Persist to the notificationsPrefs store.
+    useNotificationsPrefsStore
+      .getState()
+      .setReadNotifications(Array.from(newReadSet));
   };
 
   // Mark all as read
@@ -250,16 +232,13 @@ export function NotificationModal({ id }: NotificationModalProps) {
     const allGuids = notifications.map((n) => n.guid);
     const newReadSet = new Set(allGuids);
     setReadNotifications(newReadSet);
-    localStorage.setItem(
-      "read-notifications",
-      JSON.stringify(Array.from(newReadSet)),
-    );
+    useNotificationsPrefsStore.getState().setReadNotifications(allGuids);
   };
 
   // Mark all as unread
   const markAllAsUnread = () => {
     setReadNotifications(new Set());
-    localStorage.setItem("read-notifications", JSON.stringify([]));
+    useNotificationsPrefsStore.getState().clearReadNotifications();
   };
 
   // Navigate to detail view
@@ -287,12 +266,12 @@ export function NotificationModal({ id }: NotificationModalProps) {
   // Save settings functions
   const saveAutoReadDays = (days: number) => {
     setAutoReadDays(days);
-    localStorage.setItem("notification-auto-read-days", days.toString());
+    setStoredAutoReadDays(days);
   };
 
   const saveCustomFeeds = (feeds: string[]) => {
     setCustomFeeds(feeds);
-    localStorage.setItem("notification-custom-feeds", JSON.stringify(feeds));
+    setStoredCustomFeeds(feeds);
   };
 
   // Scroll to last read notification
@@ -399,10 +378,9 @@ export function NotificationModal({ id }: NotificationModalProps) {
               const newReadSet = new Set(readNotifications);
               newReadSet.delete(selectedNotification.guid);
               setReadNotifications(newReadSet);
-              localStorage.setItem(
-                "read-notifications",
-                JSON.stringify(Array.from(newReadSet)),
-              );
+              useNotificationsPrefsStore
+                .getState()
+                .setReadNotifications(Array.from(newReadSet));
             } else {
               // Mark as read
               markAsRead(selectedNotification.guid);

@@ -11,6 +11,7 @@ import { MediaGrid } from "@/components/media/MediaGrid";
 import { WatchedMediaCard } from "@/components/media/WatchedMediaCard";
 import { useProgressStore } from "@/stores/progress";
 import { shouldShowProgress } from "@/stores/progress/utils";
+import { useHomePrefsStore } from "@/stores/homePrefs";
 import { SortOption, sortMediaItems } from "@/utils/mediaSorting";
 import { MediaItem } from "@/utils/mediaTypes";
 
@@ -25,15 +26,9 @@ export function WatchingPart({
   const progressItems = useProgressStore((s) => s.items);
   const removeItem = useProgressStore((s) => s.removeItem);
   const [editing, setEditing] = useState(false);
-  const [sortBy, setSortBy] = useState<SortOption>(() => {
-    const saved = localStorage.getItem("__MW::watchingSort");
-    return (saved as SortOption) || "date";
-  });
+  const sortBy = useHomePrefsStore((s) => s.watchingSort);
+  const setWatchingSort = useHomePrefsStore((s) => s.setWatchingSort);
   const [gridRef] = useAutoAnimate<HTMLDivElement>();
-
-  useEffect(() => {
-    localStorage.setItem("__MW::watchingSort", sortBy);
-  }, [sortBy]);
 
   const sortedProgressItems = useMemo(() => {
     const output: MediaItem[] = [];
@@ -46,7 +41,7 @@ export function WatchingPart({
         });
       });
 
-    return sortMediaItems(output, sortBy, undefined, progressItems);
+    return sortMediaItems(output, sortBy as SortOption, undefined, progressItems);
   }, [progressItems, sortBy]);
 
   useEffect(() => {
@@ -96,8 +91,7 @@ export function WatchingPart({
             selectedItem={selectedSortOption}
             setSelectedItem={(item) => {
               const newSort = item.id as SortOption;
-              setSortBy(newSort);
-              localStorage.setItem("__MW::watchingSort", newSort);
+              setWatchingSort(newSort);
             }}
             options={sortOptions}
             customButton={

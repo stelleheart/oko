@@ -6,6 +6,7 @@ import {
 
 import { sendExtensionRequest } from "@/backend/extension/messaging";
 import { getApiToken, setApiToken } from "@/backend/helpers/providerApi";
+import { useUiPrefsStore } from "@/stores/uiPrefs";
 import { getM3U8ProxyUrls, getProxyUrls } from "@/utils/proxyUrls";
 
 import { convertBodyToObject, getBodyTypeFromBody } from "../extension/request";
@@ -26,20 +27,19 @@ function makeLoadbalancedList(getter: () => string[]) {
 export const getLoadbalancedProxyUrl = makeLoadbalancedList(getProxyUrls);
 function getEnabledM3U8ProxyUrls() {
   const allM3U8ProxyUrls = getM3U8ProxyUrls();
-  const enabledProxies = localStorage.getItem("m3u8-proxy-enabled");
+  // Read from the zustand-backed uiPrefs store (persists under
+  // `m3u8-proxy-enabled` with the legacy JSON shape). When no entry is
+  // recorded for a given proxy index, treat it as enabled — matching the
+  // original `enabled[index] !== false` semantics.
+  const enabled = useUiPrefsStore.getState().m3u8ProxyEnabled;
 
-  if (!enabledProxies) {
+  if (!enabled || Object.keys(enabled).length === 0) {
     return allM3U8ProxyUrls;
   }
 
-  try {
-    const enabled = JSON.parse(enabledProxies);
-    return allM3U8ProxyUrls.filter(
-      (_url, index) => enabled[index.toString()] !== false,
-    );
-  } catch {
-    return allM3U8ProxyUrls;
-  }
+  return allM3U8ProxyUrls.filter(
+    (_url, index) => enabled[index.toString()] !== false,
+  );
 }
 
 export const getLoadbalancedM3U8ProxyUrl = makeLoadbalancedList(

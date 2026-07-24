@@ -8,6 +8,7 @@ import { Icon, Icons } from "@/components/Icon";
 import { Box } from "@/components/layout/Box";
 import { Divider } from "@/components/utils/Divider";
 import { Heading2 } from "@/components/utils/Text";
+import { useUiPrefsStore } from "@/stores/uiPrefs";
 import { getM3U8ProxyUrls } from "@/utils/proxyUrls";
 
 export function M3U8ProxyItem(props: {
@@ -72,26 +73,39 @@ export function M3U8TestPart() {
     }));
   }, []);
 
-  // Load enabled proxies from localStorage
-  const [enabledProxies, setEnabledProxies] = useState<Record<string, boolean>>(
-    () => {
-      const saved = localStorage.getItem("m3u8-proxy-enabled");
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {
-          return {};
-        }
-      }
-      // Default: all enabled
-      return Object.fromEntries(m3u8ProxyList.map((proxy) => [proxy.id, true]));
-    },
-  );
+  // Load enabled proxies from the zustand-backed uiPrefs store (persists
+  // under `m3u8-proxy-enabled` with the legacy JSON shape). A proxy not
+  // recorded in the map is treated as enabled, mirroring the original
+  // `enabled[id] !== false` semantics.
+  const enabledProxies = useUiPrefsStore((s) => s.m3u8ProxyEnabled);
+  const setEnabledProxies = useUiPrefsStore((s) => s.setM3U8ProxyEnabled);
 
-  // Save enabled proxies to localStorage
+  // Derived view: map each known proxy to its enabled boolean (default true
+  // when the proxy has no recorded entry). Avoids a first-render flicker
+  // where a fresh user (no persisted dict) would briefly see all proxies as
+  // "disabled".
+  const effectiveEnabledProxies = useMemo(() => {
+    const out: Record<string, boolean> = {};
+    for (const proxy of m3u8ProxyList) {
+      const stored = enabledProxies[proxy.id];
+      out[proxy.id] = stored === undefined ? true : stored;
+    }
+    return out;
+  }, [m3u8ProxyList, enabledProxies]);
+
+  // Mirror the previous default-on-first-load behavior: if no entry has
+  // ever been persisted for any proxy, treat all known proxies as enabled
+  // and seed the store with that. This preserves the original UX where
+  // toggling a proxy for the first time writes the full all-true dict.
   useEffect(() => {
-    localStorage.setItem("m3u8-proxy-enabled", JSON.stringify(enabledProxies));
-  }, [enabledProxies]);
+    if (Object.keys(enabledProxies).length > 0) return;
+    if (m3u8ProxyList.length === 0) return;
+    setEnabledProxies(
+      Object.fromEntries(m3u8ProxyList.map((proxy) => [proxy.id, true])),
+    );
+    // We intentionally only run this once when the store is empty.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [proxyState, setProxyState] = useState<
     {
@@ -161,14 +175,18 @@ export function M3U8TestPart() {
   }, [m3u8ProxyList, enabledProxies]);
 
   const handleToggleProxy = (proxyId: string, enabled: boolean) => {
-    setEnabledProxies((prev) => ({
-      ...prev,
+    setEnabledProxies({
+      ...enabledProxies,
       [proxyId]: enabled,
-    }));
+    });
   };
 
-  const allEnabled = m3u8ProxyList.every((proxy) => enabledProxies[proxy.id]);
-  const noneEnabled = m3u8ProxyList.every((proxy) => !enabledProxies[proxy.id]);
+  const allEnabled = m3u8ProxyList.every(
+    (proxy) => effectiveEnabledProxies[proxy.id],
+  );
+  const noneEnabled = m3u8ProxyList.every(
+    (proxy) => !effectiveEnabledProxies[proxy.id],
+  );
 
   const handleToggleAll = () => {
     if (allEnabled) {
@@ -185,7 +203,7 @@ export function M3U8TestPart() {
   };
 
   const enabledCount = m3u8ProxyList.filter(
-    (proxy) => enabledProxies[proxy.id],
+    (proxy) => effectiveEnabledProxies[proxy.id],
   ).length;
 
   return (
@@ -208,7 +226,7 @@ export function M3U8TestPart() {
         {m3u8ProxyList.map((v, i) => {
           const s = proxyState.find((segment) => segment.id === v.id);
           const name = `M3U8 Proxy ${i + 1}`;
-          const enabled = enabledProxies[v.id];
+          const enabled = effectiveEnabledProxies[v.id];
 
           if (!s) {
             return (

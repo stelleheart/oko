@@ -8,6 +8,7 @@ import { OverlayPortal } from "@/components/overlays/OverlayDisplay";
 import { Flare } from "@/components/utils/Flare";
 import { Heading2 } from "@/components/utils/Text";
 import { useOverlayStack } from "@/stores/interface/overlayStack";
+import { useUiPrefsStore } from "@/stores/uiPrefs";
 
 export function useModal(id: string) {
   const { showModal, hideModal, isModalVisible } = useOverlayStack();
@@ -70,19 +71,18 @@ export function FancyModal(props: {
   oneTime?: boolean;
 }) {
   const modal = useModal(props.id);
+  const isDismissed = useUiPrefsStore((s) => s.isModalDismissed(props.id));
+  const dismissModal = useUiPrefsStore((s) => s.dismissModal);
 
   useEffect(() => {
-    if (props.oneTime) {
-      const isDismissed = localStorage.getItem(`modal-${props.id}-dismissed`);
-      if (!isDismissed) {
-        modal.show();
-      }
+    if (props.oneTime && !isDismissed) {
+      modal.show();
     }
-  }, [modal, props.id, props.oneTime]);
+  }, [modal, props.id, props.oneTime, isDismissed]);
 
   const handleClose = () => {
     if (props.oneTime) {
-      localStorage.setItem(`modal-${props.id}-dismissed`, "true");
+      dismissModal(props.id);
     }
     modal.hide();
   };

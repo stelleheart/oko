@@ -1,20 +1,12 @@
 import DOMPurify from "dompurify";
 
 import { proxiedFetch } from "@/backend/helpers/fetch";
+import { getCustomFeeds } from "@/stores/notificationsPrefs";
 
 const DEFAULT_FEEDS = ["/notifications.xml"];
 
 export const getAllFeeds = (): string[] => {
-  try {
-    const savedCustomFeeds = localStorage.getItem("notification-custom-feeds");
-    if (savedCustomFeeds) {
-      const customFeeds = JSON.parse(savedCustomFeeds);
-      return [...DEFAULT_FEEDS, ...customFeeds];
-    }
-  } catch (e) {
-    // Silently fail and return default feeds
-  }
-  return DEFAULT_FEEDS;
+  return [...DEFAULT_FEEDS, ...getCustomFeeds()];
 };
 
 export const getFetchUrl = (feedUrl: string): string => {

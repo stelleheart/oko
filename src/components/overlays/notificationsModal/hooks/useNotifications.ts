@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { useOverlayStack } from "@/stores/interface/overlayStack";
+import { getReadNotifications } from "@/stores/notificationsPrefs";
 
 import { NotificationItem } from "../types";
 import { fetchRssFeed, getAllFeeds, getSourceName } from "../utils";
@@ -118,25 +119,14 @@ export function useNotifications() {
 
   // Get unread count for badge
   const getUnreadCount = () => {
-    try {
-      const savedRead = localStorage.getItem("read-notifications");
-      if (!savedRead) {
-        const count = notifications.length;
-        return count > 99 ? "99+" : count;
-      }
+    const readSet = new Set(getReadNotifications());
 
-      const readArray = JSON.parse(savedRead);
-      const readSet = new Set(readArray);
+    // Get the actual count from the notifications state
+    const count = notifications.filter(
+      (n: NotificationItem) => !readSet.has(n.guid),
+    ).length;
 
-      // Get the actual count from the notifications state
-      const count = notifications.filter(
-        (n: NotificationItem) => !readSet.has(n.guid),
-      ).length;
-
-      return count > 99 ? "99+" : count;
-    } catch {
-      return 0;
-    }
+    return count > 99 ? "99+" : count;
   };
 
   return {

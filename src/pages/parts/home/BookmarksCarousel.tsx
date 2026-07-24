@@ -1,5 +1,5 @@
 import { Listbox } from "@headlessui/react";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
@@ -18,6 +18,7 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { CarouselNavButtons } from "@/pages/discover/components/CarouselNavButtons";
 import { useBookmarkStore } from "@/stores/bookmarks";
 import { useGroupOrderStore } from "@/stores/groupOrder";
+import { useHomePrefsStore } from "@/stores/homePrefs";
 import { useProgressStore } from "@/stores/progress";
 import { SortOption, sortMediaItems } from "@/utils/mediaSorting";
 import { MediaItem } from "@/utils/mediaTypes";
@@ -93,15 +94,12 @@ export function BookmarksCarousel({
   const browser = !!window.chrome;
   let isScrolling = false;
   const [editing, setEditing] = useState(false);
-  const [sortBy, setSortBy] = useState<SortOption>(() => {
-    const saved = localStorage.getItem("__MW::bookmarksSort");
-    return (saved as SortOption) || "date";
-  });
+  const [sortBy, setSortBy] = useState<SortOption>(
+    () =>
+      (useHomePrefsStore.getState().bookmarksSort as SortOption) || "date",
+  );
+  const setBookmarksSort = useHomePrefsStore((s) => s.setBookmarksSort);
   const removeBookmark = useBookmarkStore((s) => s.removeBookmark);
-
-  useEffect(() => {
-    localStorage.setItem("__MW::bookmarksSort", sortBy);
-  }, [sortBy]);
 
   // Editing modals
   const editBookmarkModal = useModal("bookmark-edit-carousel");
@@ -345,7 +343,7 @@ export function BookmarksCarousel({
                     setSelectedItem={(item) => {
                       const newSort = item.id as SortOption;
                       setSortBy(newSort);
-                      localStorage.setItem("__MW::bookmarksSort", newSort);
+                      setBookmarksSort(newSort);
                     }}
                     options={sortOptions}
                     customButton={

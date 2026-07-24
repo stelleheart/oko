@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Icon, Icons } from "@/components/Icon";
 import { conf } from "@/setup/config";
 import { useBannerStore, useRegisterBanner } from "@/stores/banner";
+import { useUiPrefsStore } from "@/stores/uiPrefs";
 
 export function Banner(props: {
   children: React.ReactNode;
@@ -12,6 +13,8 @@ export function Banner(props: {
 }) {
   const [ref] = useRegisterBanner<HTMLDivElement>(props.id);
   const hideBanner = useBannerStore((s) => s.hideBanner);
+  const dismissBanner = useUiPrefsStore((s) => s.dismissBanner);
+  const isBannerDismissed = useUiPrefsStore((s) => s.isBannerDismissed);
   const styles = {
     error: "bg-[#C93957] text-white",
     info: "bg-[#126FD3] text-white",
@@ -22,11 +25,10 @@ export function Banner(props: {
   };
 
   useEffect(() => {
-    const hideBannerFlag = localStorage.getItem(`hideBanner-${props.id}`);
-    if (hideBannerFlag) {
+    if (isBannerDismissed(props.id)) {
       hideBanner(props.id, true);
     }
-  }, [hideBanner, props.id]);
+  }, [hideBanner, isBannerDismissed, props.id]);
 
   return (
     <div ref={ref}>
@@ -44,7 +46,7 @@ export function Banner(props: {
           className="absolute right-4 hover:cursor-pointer"
           onClick={() => {
             hideBanner(props.id, true);
-            localStorage.setItem(`hideBanner-${props.id}`, "true");
+            dismissBanner(props.id);
           }}
         >
           <Icon icon={Icons.X} />
