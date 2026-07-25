@@ -5,10 +5,24 @@ export interface SessionResponse {
   userId: string;
   createdAt: string;
   accessedAt: string;
+  expiresAt: string;
   device: string;
   userAgent: string;
 }
+
+export interface UserResponse {
+  id: string;
+  nickname: string;
+  profile: {
+    colorA: string;
+    colorB: string;
+    icon: string;
+  };
+  permissions: string[];
+}
+
 export interface LoginResponse {
+  user: UserResponse;
   session: SessionResponse;
   token: string;
 }
@@ -17,19 +31,4 @@ export function getAuthHeaders(token: string): Record<string, string> {
   return {
     authorization: `Bearer ${token}`,
   };
-}
-
-export async function accountLogin(
-  url: string,
-  id: string,
-  deviceName: string,
-): Promise<LoginResponse> {
-  return ofetch<LoginResponse>("/auth/login", {
-    method: "POST",
-    body: {
-      id,
-      device: deviceName,
-    },
-    baseURL: url,
-  });
 }

@@ -1,10 +1,9 @@
 import classNames from "classnames";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useAsync } from "react-use";
 
-import { base64ToBuffer } from "@/backend/accounts/crypto";
 import { getBackendMeta } from "@/backend/accounts/meta";
 import { getRoomStatuses } from "@/backend/player/status";
 import { UserAvatar } from "@/components/Avatar";
@@ -14,7 +13,6 @@ import { useModal } from "@/components/overlays/Modal";
 import { Transition } from "@/components/utils/Transition";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useBackendUrl } from "@/hooks/auth/useBackendUrl";
-import { useDecryptedDeviceName } from "@/hooks/auth/useDecryptedDeviceName";
 import { useIsDesktopApp } from "@/hooks/useIsDesktopApp";
 import { conf } from "@/setup/config";
 import { useAuthStore } from "@/stores/auth";
@@ -213,12 +211,6 @@ export function LinksDropdown(props: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const revivalModal = useModal("revival-announcement");
   const deviceName = useAuthStore((s) => s.account?.deviceName);
-  const seed = useAuthStore((s) => s.account?.seed);
-  const bufferSeed = useMemo(
-    () => (seed ? base64ToBuffer(seed) : null),
-    [seed],
-  );
-  const decryptedName = useDecryptedDeviceName(deviceName, seed);
   const { logout } = useAuth();
   const backendUrl = useBackendUrl();
 
@@ -273,10 +265,10 @@ export function LinksDropdown(props: { children: React.ReactNode }) {
       </div>
       <Transition animation="slide-down" show={open}>
         <div className="rounded-xl absolute w-64 bg-dropdown-altBackground top-full mt-3 right-0">
-          {deviceName && bufferSeed ? (
+          {deviceName ? (
             <DropdownLink className="text-white" href="/settings">
               <UserAvatar />
-              {decryptedName}
+              {deviceName}
             </DropdownLink>
           ) : (
             <DropdownLink href="/login" icon={Icons.RISING_STAR} highlight>

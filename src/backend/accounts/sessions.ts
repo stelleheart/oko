@@ -8,6 +8,7 @@ export interface SessionResponse {
   userId: string;
   createdAt: string;
   accessedAt: string;
+  expiresAt: string;
   device: string;
   userAgent: string;
 }

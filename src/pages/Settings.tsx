@@ -3,10 +3,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAsyncFn } from "react-use";
 
-import {
-  base64ToBuffer,
-  encryptData,
-} from "@/backend/accounts/crypto";
 import { getSessions, updateSession } from "@/backend/accounts/sessions";
 import { getSettings, updateSettings } from "@/backend/accounts/settings";
 import { editUser } from "@/backend/accounts/user";
@@ -22,7 +18,6 @@ import { Heading1, Heading2, Paragraph } from "@/components/utils/Text";
 import { Transition } from "@/components/utils/Transition";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useBackendUrl } from "@/hooks/auth/useBackendUrl";
-import { useDecryptedDeviceName } from "@/hooks/auth/useDecryptedDeviceName";
 import { useIsIOS, useIsMobile, useIsPWA } from "@/hooks/useIsMobile";
 import { useSettingsState } from "@/hooks/useSettingsState";
 import { AccountActionsPart } from "@/pages/parts/settings/AccountActionsPart";
@@ -552,10 +547,7 @@ export function SettingsPage() {
   const updateProfile = useAuthStore((s) => s.setAccountProfile);
   const updateDeviceName = useAuthStore((s) => s.updateDeviceName);
   const updateNickname = useAuthStore((s) => s.setAccountNickname);
-  const decryptedName = useDecryptedDeviceName(
-    account?.deviceName,
-    account?.seed,
-  );
+  const deviceName = account?.deviceName ?? "";
 
   const backendUrl = useBackendUrl();
 
@@ -746,7 +738,7 @@ export function SettingsPage() {
     activeTheme,
     appLanguage,
     subStyling,
-    decryptedName,
+    deviceName,
     account?.nickname || "",
     proxySet,
     backendUrlSetting,
@@ -895,14 +887,10 @@ export function SettingsPage() {
         });
       }
       if (state.deviceName.changed) {
-        const newDeviceName = await encryptData(
-          state.deviceName.state,
-          base64ToBuffer(account.seed),
-        );
         await updateSession(backendUrl, account, {
-          deviceName: newDeviceName,
+          deviceName: state.deviceName.state,
         });
-        updateDeviceName(newDeviceName);
+        updateDeviceName(state.deviceName.state);
       }
       if (state.nickname.changed) {
         await editUser(backendUrl, account, {

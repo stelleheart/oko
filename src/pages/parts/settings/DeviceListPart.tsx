@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAsyncFn } from "react-use";
 
-import { SessionResponse } from "@/backend/accounts/auth";
-import { base64ToBuffer, decryptData } from "@/backend/accounts/crypto";
+import { SessionResponse } from "@/backend/accounts/sessions";
 import { removeSession } from "@/backend/accounts/sessions";
 import { Button } from "@/components/buttons/Button";
 import { Loading } from "@/components/layout/Loading";
@@ -75,7 +74,6 @@ export function DeviceListPart(props: {
   onChange?: () => void;
 }) {
   const { t } = useTranslation();
-  const seed = useAuthStore((s) => s.account?.seed);
   const sessions = props.sessions;
   const currentSessionId = useAuthStore((s) => s.account?.sessionId);
   const fallback = t("settings.account.devices.unknownDevice");
@@ -84,59 +82,22 @@ export function DeviceListPart(props: {
   );
 
   useEffect(() => {
-    if (!seed) {
-      setDeviceListSorted([]);
-      return;
-    }
-    let cancelled = false;
-    Promise.all(
-      sessions.map(async (session) => {
-        const parts = session.device?.split(".");
-        if (!parts || parts.length !== 3) {
-          // Legacy plaintext device name (stored before encryption was added)
-          return {
-            current: session.id === currentSessionId,
-            id: session.id,
-            name: session.device || fallback,
-          };
-        }
-        try {
-          const name = await decryptData(
-            session.device,
-            base64ToBuffer(seed),
-          );
-          return {
-            current: session.id === currentSessionId,
-            id: session.id,
-            name,
-          };
-        } catch (error) {
-          console.warn(
-            `Failed to decrypt device name for session ${session.id}:`,
-            error,
-          );
-          return {
-            current: session.id === currentSessionId,
-            id: session.id,
-            name: fallback,
-          };
-        }
-      }),
-    ).then((list) => {
-      if (cancelled) return;
-      list.sort((a, b) => {
-        if (a.current) return -1;
-        if (b.current) return 1;
-        return a.name.localeCompare(b.name);
-      });
-      setDeviceListSorted(list);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [seed, sessions, currentSessionId, fallback]);
+    const list = sessions.map((session) => ({
+      current: session.id === currentSessionId,
+      id: session.id,
+      name: session.device || fallback,
+    }));
 
-  if (!seed) return null;
+    list.sort((a, b) => {
+      if (a.current) return -1;
+      if (b.current) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    setDeviceListSorted(list);
+  }, [sessions, currentSessionId, fallback]);
+
+  if (deviceListSorted.length === 0) return null;
 
   return (
     <div>

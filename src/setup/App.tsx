@@ -34,7 +34,7 @@ import { NotFoundPage } from "@/pages/errors/NotFoundPage";
 import { ErrorBoundary } from "@/pages/errors/ErrorBoundary";
 import { HomePage } from "@/pages/HomePage";
 import { LoginPage } from "@/pages/Login";
-import { RegisterPage } from "@/pages/Register";
+import { OidcCallbackPage } from "@/pages/OidcCallback";
 import { shouldHaveLegalPage } from "@/pages/Legal";
 import { Layout } from "@/setup/Layout";
 import { useHistoryListener } from "@/stores/history";
@@ -82,15 +82,10 @@ const MigrationPage = lazy(() =>
     default: m.MigrationPage,
   }))
 );
-const MigrationDirectPage = lazy(() =>
-  import("@/pages/migration/MigrationDirect").then((m) => ({
-    default: m.MigrationDirectPage,
-  }))
-);
 const MigrationDownloadPage = lazy(() =>
   import("@/pages/migration/MigrationDownload").then((m) => ({
     default: m.MigrationDownloadPage,
-  }))
+  })),
 );
 const MigrationUploadPage = lazy(() =>
   import("@/pages/migration/MigrationUpload").then((m) => ({
@@ -242,8 +237,9 @@ function App() {
           />
           <Route path="/browse/:query?" element={<HomePage />} />
           <Route path="/" element={<HomePage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/register" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/auth/callback" element={<OidcCallbackPage />} />
           <Route
             path="/about"
             element={
@@ -283,14 +279,6 @@ function App() {
             element={
               <Suspense fallback={null}>
                 <MigrationPage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/migration/direct"
-            element={
-              <Suspense fallback={null}>
-                <MigrationDirectPage />
               </Suspense>
             }
           />

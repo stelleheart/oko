@@ -112,7 +112,6 @@ export function useAuthData() {
       loginResponse: LoginResponse,
       user: UserResponse,
       session: SessionResponse,
-      seed: string,
     ) => {
       const account = {
         token: loginResponse.token,
@@ -121,7 +120,6 @@ export function useAuthData() {
         deviceName: session.device,
         profile: user.profile,
         nickname: user.nickname,
-        seed,
       };
       setAccount(account);
       return account;

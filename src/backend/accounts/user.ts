@@ -8,7 +8,6 @@ import { WatchHistoryItem } from "@/stores/watchHistory";
 
 export interface UserResponse {
   id: string;
-  namespace: string;
   nickname: string;
   permissions: string[];
   profile: {

@@ -161,41 +161,14 @@
     "createAccount": "Don't have an account yet 😬 <0>Create an account.</0>",
     "deviceNameLabel": "Device name",
     "deviceNamePlaceholder": "Personal phone",
-    "generate": {
-      "description": "Your passphrase acts as your username and password. Make sure to keep it safe as you will need to enter it to login to your account. <bold>Do NOT lose your passphrase!</bold>",
-      "next": "I have saved my passphrase",
-      "passphraseFrameLabel": "Passphrase",
-      "title": "Your passphrase",
-      "custom": "Custom",
-      "customPassphraseLabel": "Custom Passphrase",
-      "customPassphrasePlaceholder": "Enter your custom passphrase",
-      "useCustomPassphrase": "Use Custom Passphrase",
-      "invalidPassphraseCharacters": "Invalid passphrase characters. Only English letters, numbers 1-10, and normal symbols are allowed.",
-      "passphraseTooShort": "Passphrase must be at least 8 characters long.",
-      "usePasskeyInstead": "Use passkey instead"
+    "oidc": {
+      "signIn": "Sign in with OIDC",
+      "description": "You will be redirected to your identity provider to sign in."
     },
     "hasAccount": "Already have an account? <0>Login here.</0>",
     "login": {
-      "description": "Please enter your passphrase to login to your account",
       "deviceLengthError": "Please enter a device name",
-      "passphraseLabel": "12-Word passphrase",
-      "passphrasePlaceholder": "Passphrase",
-      "submit": "Login",
-      "title": "Login to your account",
-      "validationError": "Incorrect or incomplete passphrase /ᐠ. .ᐟ\\",
-      "usePasskey": "Use passkey",
-      "or": "or",
       "noBackendUrl": "No backend URL"
-    },
-    "register": {
-      "information": {
-        "color1": "Profile color one",
-        "color2": "Profile color two",
-        "header": "Enter a name for your device then pick colors and a user icon of your choosing!",
-        "icon": "User icon",
-        "next": "Next",
-        "title": "Account information"
-      }
     },
     "backendSelection": {
       "title": "Select Account Server",
@@ -218,18 +191,6 @@
       "no": "Go back",
       "title": "Do you trust this server?",
       "yes": "I trust this server 🤞"
-    },
-    "verify": {
-      "description": "Please enter your passphrase from earlier to confirm you have saved it and to create your account",
-      "invalidData": "Data is not valid",
-      "noMatch": "Passphrase doesn't match 😭",
-      "passphraseLabel": "Your 12-word passphrase",
-      "recaptchaFailed": "ReCaptcha validation failed",
-      "register": "Create account",
-      "title": "Confirm your account",
-      "passkeyDescription": "Please authenticate with your passkey to complete registration.",
-      "authenticatePasskey": "Authenticate with Passkey",
-      "passkeyError": "Passkey verification failed"
     }
   },
   "errors": {

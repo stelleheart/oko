@@ -1,15 +1,16 @@
 import classNames from "classnames";
 import { useMemo } from "react";
 
-import { base64ToBuffer } from "@/backend/accounts/crypto";
 import { Icon, Icons } from "@/components/Icon";
 import { UserIcon } from "@/components/UserIcon";
-import { useDecryptedDeviceName } from "@/hooks/auth/useDecryptedDeviceName";
-import { AccountProfile } from "@/pages/parts/auth/AccountCreatePart";
 import { useAuthStore } from "@/stores/auth";
 
 export interface AvatarProps {
-  profile: AccountProfile["profile"];
+  profile: {
+    colorA: string;
+    colorB: string;
+    icon: string;
+  };
   sizeClass?: string;
   iconClass?: string;
   bottom?: React.ReactNode;
@@ -49,22 +50,11 @@ export function UserAvatar(props: {
 }) {
   const auth = useAuthStore();
 
-  const bufferSeed = useMemo(
-    () =>
-      auth.account && auth.account.seed
-        ? base64ToBuffer(auth.account.seed)
-        : null,
-    [auth],
-  );
-
-  const deviceName = useDecryptedDeviceName(
-    auth.account?.deviceName,
-    auth.account?.seed,
-  );
+  const deviceName = auth.account?.deviceName ?? "";
 
   if (!auth.account || auth.account === null) return null;
 
-  const displayName = bufferSeed ? deviceName : "...";
+  const displayName = deviceName;
 
   return (
     <>
@@ -76,7 +66,7 @@ export function UserAvatar(props: {
         iconClass={props.iconClass}
         bottom={props.bottom}
       />
-      {props.withName && bufferSeed ? (
+      {props.withName && displayName ? (
         <span className="hidden md:inline-block">
           {displayName.length >= 20
             ? `${displayName.slice(0, 20 - 1)}…`
