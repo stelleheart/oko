@@ -50,11 +50,9 @@ export function UserAvatar(props: {
 }) {
   const auth = useAuthStore();
 
-  const deviceName = auth.account?.deviceName ?? "";
+  const displayName = auth.account?.nickname ?? auth.account?.deviceName ?? "";
 
   if (!auth.account || auth.account === null) return null;
-
-  const displayName = deviceName;
 
   return (
     <>

@@ -210,7 +210,7 @@ export function LinksDropdown(props: { children: React.ReactNode }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const revivalModal = useModal("revival-announcement");
-  const deviceName = useAuthStore((s) => s.account?.deviceName);
+  const displayName = useAuthStore((s) => s.account?.nickname ?? s.account?.deviceName);
   const { logout } = useAuth();
   const backendUrl = useBackendUrl();
 
@@ -265,10 +265,10 @@ export function LinksDropdown(props: { children: React.ReactNode }) {
       </div>
       <Transition animation="slide-down" show={open}>
         <div className="rounded-xl absolute w-64 bg-dropdown-altBackground top-full mt-3 right-0">
-          {deviceName ? (
+          {displayName ? (
             <DropdownLink className="text-white" href="/settings">
               <UserAvatar />
-              {deviceName}
+              {displayName}
             </DropdownLink>
           ) : (
             <DropdownLink href="/login" icon={Icons.RISING_STAR} highlight>
@@ -325,7 +325,7 @@ export function LinksDropdown(props: { children: React.ReactNode }) {
             </DropdownLink>
           )}
           {backendSupportsWatchParty && <WatchPartyInputLink />}
-          {deviceName ? (
+          {displayName ? (
             <DropdownLink
               className="!text-type-danger opacity-75 hover:opacity-100"
               icon={Icons.LOGOUT}
