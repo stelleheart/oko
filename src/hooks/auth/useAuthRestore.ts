@@ -39,7 +39,7 @@ export function useAuthRestore() {
 		await restore(account).finally(() => {
 			hasRestored.current = true;
 		});
-	}, []); // no deps because we don't want to it ever rerun after the first time
+	}, [account]); // re-run when account changes so fresh OIDC logins restore prefs
 
 	return result;
 }
