@@ -23,3 +23,14 @@ export async function bootstrapOidcSession(
 		baseURL: url,
 	});
 }
+
+export async function getIdpLogoutUrl(url: string): Promise<string> {
+	const { url: logoutUrl } = await ofetch<{ url: string }>(
+		"/auth/oidc/logout",
+		{
+			method: "POST",
+			baseURL: url,
+		},
+	);
+	return logoutUrl;
+}

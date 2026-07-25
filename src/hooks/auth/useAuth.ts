@@ -1,7 +1,11 @@
 import { useCallback } from "react";
 
 import { SessionResponse } from "@/backend/accounts/auth";
-import { bootstrapOidcSession, startOidcLogin } from "@/backend/accounts/oidc";
+import {
+  bootstrapOidcSession,
+  getIdpLogoutUrl,
+  startOidcLogin,
+} from "@/backend/accounts/oidc";
 import { removeSession } from "@/backend/accounts/sessions";
 import { getSettings } from "@/backend/accounts/settings";
 import {
@@ -64,6 +68,14 @@ export function useAuth() {
       // we dont care about failing to delete session
     }
     await userDataLogout();
+    // End the IdP session too. If this fails (e.g. offline) the local logout
+    // already succeeded; just don't redirect.
+    try {
+      const idpLogoutUrl = await getIdpLogoutUrl(backendUrl);
+      window.location.href = idpLogoutUrl;
+    } catch {
+      // no-op: local logout already completed
+    }
   }, [userDataLogout, backendUrl, currentAccount]);
 
   const disconnectFromBackend = useCallback(async () => {
