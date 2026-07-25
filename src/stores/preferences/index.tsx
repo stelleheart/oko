@@ -89,7 +89,7 @@ export const usePreferencesStore = create(
       enableSkipCredits: true,
       enableAutoSkipSegments: false,
       enableDiscover: true,
-      enableFeatured: false,
+      enableFeatured: true,
       enableDetailsModal: false,
       enableImageLogos: true,
       enableCarouselView: false,
