@@ -74,11 +74,6 @@ export async function scrapeRottenTomatoes(
     );
   }
 
-  // eslint-disable-next-line no-console
-  console.log(
-    `[RT Scraper] Using ${hasExtension ? "browser extension" : "custom proxy"} for requests`,
-  );
-
   // Construct search URL with cleaned title
   const searchQuery = encodeURIComponent(title.trim());
   const searchUrl = `https://www.rottentomatoes.com/search?search=${searchQuery}`;

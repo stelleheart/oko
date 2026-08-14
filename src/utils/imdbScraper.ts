@@ -127,10 +127,6 @@ export async function scrapeIMDb(
     );
   }
 
-  console.log(
-    `[IMDb Scraper] Using ${hasExtension ? "browser extension" : "custom proxy"} for requests`,
-  );
-
   // Get user language if not provided
   if (!language) {
     const userLanguage = useLanguageStore.getState().language;
