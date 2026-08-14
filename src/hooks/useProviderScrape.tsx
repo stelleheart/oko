@@ -263,8 +263,7 @@ export function useScrape() {
         : undefined;
 
       startScrape();
-      const providers = getProviders();
-      const output = await providers.runAll({
+      const output = await providerInstance.runAll({
         media,
         sourceOrder: filteredSourceOrder,
         embedOrder: filteredEmbedOrder,
@@ -275,7 +274,6 @@ export function useScrape() {
           discoverEmbeds: discoverEmbedsEvent,
         },
       });
-      console.log("Scrape output:", output);
       if (output && isExtensionActiveCached()) {
         try {
           await prepareStream(output.stream);
