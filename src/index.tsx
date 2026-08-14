@@ -226,7 +226,11 @@ function TheRouter(props: { children: ReactNode }) {
 function ExtensionStatus() {
   const { t } = useTranslation();
   const [state] = useAsyncFn(async () => {
-    if (!isExtensionActiveCached) {
+    // Probe the extension at startup when we don't already know it's active.
+    // isExtensionActiveCached is a function, so it must be invoked — a
+    // missing call here means the probe never fires and the loading screen
+    // is skipped entirely.
+    if (!isExtensionActiveCached()) {
       return extensionInfo();
     }
   });
